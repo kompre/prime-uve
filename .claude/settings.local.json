@@ -1,12 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)",
+      "Bash(pytest:*)",
+      "Bash(mkdir:*)",
       "Bash(git checkout:*)",
-      "Bash(uv sync:*)",
       "Bash(uv run pytest:*)",
+      "Bash(python:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nTask 1.1: Implement path hashing system\n\nImplemented core path utilities for cross-platform venv management:\n\nFeatures:\n- generate_hash(): Deterministic SHA256-based path hashing\n- generate_venv_path(): Creates paths with $HOME variable\n- expand_path_variables(): Expands $HOME for local operations\n- get_project_name(): Extracts/sanitizes project names from pyproject.toml\n- ensure_home_set(): Windows HOME variable compatibility\n\nCross-platform design:\n- Always uses $HOME in .env.uve (not platform-specific variables)\n- Works on Windows, macOS, Linux\n- Supports network share scenario (same .env.uve for all users)\n\nTesting:\n- 30 comprehensive unit tests\n- 98% code coverage\n- Tests cover edge cases: long paths, unicode, special chars, symlinks\n\nArchitecture proposal moved to pending phase.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
