@@ -71,10 +71,10 @@ def test_main_finds_env_file(mock_find_env_file, mock_subprocess, mock_is_uv_ava
         main()
 
     assert exc_info.value.code == 0
-    # Verify subprocess was called with env file
+    # Verify subprocess was called with env file (as posix path)
     mock_subprocess.assert_called_once()
     cmd = mock_subprocess.call_args[0][0]
-    assert str(mock_find_env_file) in cmd
+    assert mock_find_env_file.as_posix() in cmd
 
 
 def test_main_passes_args_to_uv(mock_find_env_file, mock_subprocess, mock_is_uv_available):
@@ -129,7 +129,7 @@ def test_main_constructs_correct_command(
         main()
 
     cmd = mock_subprocess.call_args[0][0]
-    expected_prefix = ["uv", "run", "--env-file", str(mock_find_env_file), "--", "uv"]
+    expected_prefix = ["uv", "run", "--env-file", mock_find_env_file.as_posix(), "--", "uv"]
     assert cmd[: len(expected_prefix)] == expected_prefix
     assert cmd[len(expected_prefix) :] == ["add", "requests"]
 
@@ -333,9 +333,9 @@ def test_main_with_empty_env_file(tmp_path, mock_subprocess, mock_is_uv_availabl
         main()
 
     assert exc_info.value.code == 0
-    # Should still pass the env file to uv
+    # Should still pass the env file to uv (as posix path)
     cmd = mock_subprocess.call_args[0][0]
-    assert str(env_file) in cmd
+    assert env_file.as_posix() in cmd
 
 
 def test_main_with_comments_only(tmp_path, mock_subprocess, mock_is_uv_available):
@@ -394,7 +394,7 @@ def test_main_does_not_expand_env_file_vars(
     ):
         main()
 
-    # uve just passes the path to the file, doesn't read or expand it
+    # uve just passes the path to the file (as posix), doesn't read or expand it
     cmd = mock_subprocess.call_args[0][0]
-    assert str(env_file) in cmd
+    assert env_file.as_posix() in cmd
     # The file content is NOT parsed or expanded by uve

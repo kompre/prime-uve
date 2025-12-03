@@ -54,7 +54,8 @@ def main() -> None:
 
     # 3. Build command: uv run --env-file .env.uve -- uv [args...]
     args = sys.argv[1:]  # All args after 'uve'
-    cmd = ["uv", "run", "--env-file", str(env_file), "--", "uv"] + args
+    # Use as_posix() to avoid backslash escaping issues on Windows
+    cmd = ["uv", "run", "--env-file", env_file.as_posix(), "--", "uv"] + args
 
     # 4. Check if uv is available
     if not is_uv_available():
