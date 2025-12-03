@@ -4,71 +4,84 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`prime-uve` is a thin wrapper around `uv` that automatically loads environment variables from `.env.uve` before executing uv commands. The primary use case is managing `UV_PROJECT_ENVIRONMENT` to point virtual environments to non-project-root locations.
+**prime-uve** is a thin wrapper for `uv` that provides two commands:
 
-**Two CLI commands:**
-- `uve [command]` - Wrapper that loads .env.uve then runs `uv [command]`
-- `prime-uve` - Standalone CLI for prime-uve management (e.g., `prime-uve init`)
+1. **`uve`** - Alias for `uv run --env-file .env.uve -- uv [command]`
+2. **`prime-uve`** - CLI tool for venv management with external venv locations
 
-**Installation:** System-wide via `uv tool install prime-uve`
+The core problem being solved: `uv` needs the `UV_PROJECT_ENVIRONMENT` variable to work correctly with external venvs. This wrapper automates loading `.env.uve` for every command and provides tooling to manage venvs in a centralized location outside project roots.
 
-## Project Management
+## Development Commands
 
-- **Never modify pyproject.toml directly** - Always use `uv` commands to manipulate dependencies and project configuration
-- The project uses Python 3.13+ (see pyproject.toml)
-- Environment variables are stored in `.env.uve` at project root (configurable via pyproject.toml or uve.toml)
+```bash
+# Sync dependencies (run at session start for uv-managed projects)
+uv sync
 
-## Key Architecture Decisions
-
-### Environment Variable Loading
-Research is needed to determine the best tool for loading env variables (e.g., dotenvx). The goal is: `uve [command]` ≈ `dotenvx run uv [command]` with .env.uve loaded.
-
-### Virtual Environment Management
-The `UV_PROJECT_ENVIRONMENT` variable should point to a cache folder outside the project root. The path is generated based on project path hash. This prevents creating .venv in project root (uv's default).
-
-### CLI Structure
-- `uve` accepts no options - only passes through uv commands
-- `prime-uve` handles tool-specific operations like `prime-uve init` (creates .env.uve with UV_PROJECT_ENVIRONMENT set to hashed cache path)
-
-## Development Notes
-
-- Project is in early/planning stages - no source code yet
-- When running uv commands via Claude Code, remember to use environment variables from .env.uve
-- Default .env.uve is currently empty
-
-## Task Planning and Management
-
-### `_todo` Directory Structure
-The project uses a structured planning system located in `_todo/`:
-
-```
-_todo/
-├── todo.md                    # Master task list written by user
-├── proposal/                  # Initial task proposals
-│   └── [task-name].md        # Claude's detailed plan awaiting user approval
-├── pending/                   # Active development files
-│   └── [task-name].md        # Approved tasks with progress updates
-└── completed/                 # Finished tasks archive
-    └── YYYY-MM-DD/           # Date-based folders for completion date
-        └── [task-name].md    # Final summary + insights
+# Use uv commands (prefer uv over direct pyproject.toml edits)
+uv add <package>
+uv remove <package>
 ```
 
-### Planning Workflow
-1. **Task Creation**: User writes tasks in `_todo/todo.md` with clear objectives and priorities
-2. **Proposal Phase**: Claude creates detailed proposal in `_todo/proposal/[task-name].md`
-   - Include original objective from todo.md and remove it from todo.md
-   - Break down into specific implementation steps
-   - Wait for user review, comments, and approval
-3. **Development Phase**: After user approval, move proposal to `_todo/pending/[task-name].md`
-   - Update file with implementation progress and activity summaries
-   - Use for ongoing development updates
-4. **Completion**: After task completion, move file to `_todo/completed/YYYY-MM-DD/`
-   - Update with final summary and insights
-   - Mark task as "Completed" in todo.md
+## .env.uve File Handling
 
-### Session Startup Protocol
-**IMPORTANT**: At the start of each session, always check:
-1. `_todo/todo.md` for new or updated tasks from the user
-2. `_todo/proposal/` for user-reviewed proposals ready to approve/implement
-3. `_todo/pending/` for active tasks requiring progress updates
-4. Current git status and recent commits for context
+The `.env.uve` file is critical to this project's operation. The lookup logic is:
+
+1. Look for `.env.uve` in cwd
+2. If not found and cwd is not project root (no pyproject.toml), walk up the tree
+3. If not found at project root, create a default empty one
+
+The file should contain:
+```
+UV_PROJECT_ENVIRONMENT="$HOME/prime-uve/venvs/<project_name>_<short path hash>"
+```
+
+Path requirements:
+- Must work cross-platform
+- Should use expandable env variables (e.g., `$HOME`)
+- Should be unique per project using name + hash
+
+## prime-uve Commands to Implement
+
+- **`prime-uve init`** - Set up venv path and save to `.env.uve`
+- **`prime-uve list`** - List all managed venvs (validate that projects still exist and paths match `.env.uve`)
+- **`prime-uve prune`** - Remove venvs from cache
+  - `--all` - Clean everything
+  - `--orphan` - Clean only orphan venvs
+  - `path/to/venv` - Clean specific venv
+  - `--current` - Clean venv mapped to current project
+- **`prime-uve activate`** - Activate current project venv from `.env.uve`
+- **`prime-uve configure vscode`** - Update `.code-workspace` file with venv path
+
+## Installation
+
+`prime-uve` should be installed as a standalone CLI tool:
+```bash
+uv tool install prime-uve
+```
+
+## Task Management Workflow
+
+This project uses a structured task workflow in the `_todo/` directory:
+
+### Directory Structure
+- `_todo/proposal/` - Task proposals awaiting approval
+- `_todo/pending/` - Active development tasks with progress updates
+- `_todo/completed/YYYY-MM-DD/` - Archived completed tasks
+
+### Workflow
+1. User adds task to `_todo/todo.md`
+2. Claude creates detailed proposal in `proposal/[task-name].md`
+3. User reviews and approves
+4. Claude moves to `pending/` and implements with progress updates
+5. Claude completes and archives to `completed/YYYY-MM-DD/` with summary
+
+Each task file should include original objective, implementation plan, progress updates, and final summary.
+
+## Architecture Notes
+
+**Current Status**: Project is in early planning phase. No source code exists yet (`src/` directory is empty). Architecture definition is the active task in `_todo/todo.md`.
+
+**Key Design Constraint**: The venv mapping needs to be cached/tracked locally so that `prime-uve list` can verify:
+- Which projects still exist on disk
+- Whether the path in `.env.uve` matches the cached mapping
+- Which venvs are orphaned (project deleted or path changed)
