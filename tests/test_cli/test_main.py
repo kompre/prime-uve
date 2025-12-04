@@ -82,6 +82,7 @@ class TestCLIMain:
 
     def test_unimplemented_commands_return_error(self, runner):
         """Test that unimplemented commands exit with error code."""
-        for command in ["init", "list", "prune", "activate"]:
+        # init and list are implemented, test only unimplemented ones
+        for command in ["prune", "activate"]:
             result = runner.invoke(cli, [command])
             assert result.exit_code == 1

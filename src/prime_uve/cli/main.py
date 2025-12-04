@@ -66,15 +66,17 @@ def init(
 
 
 @cli.command()
+@click.option("--orphan-only", is_flag=True, help="Show only orphaned venvs")
 @common_options
 @handle_errors
 @click.pass_context
-def list(ctx, verbose: bool, yes: bool, dry_run: bool, json_output: bool):
+def list(
+    ctx, orphan_only: bool, verbose: bool, yes: bool, dry_run: bool, json_output: bool
+):
     """List all managed venvs with validation status."""
-    if verbose:
-        info("list command - not yet implemented")
-    error("Command not implemented yet")
-    sys.exit(1)
+    from prime_uve.cli.list import list_command
+
+    list_command(ctx, orphan_only, verbose, yes, dry_run, json_output)
 
 
 @cli.command()
