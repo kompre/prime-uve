@@ -1,7 +1,5 @@
 """Tests for .env.uve file management."""
 
-import os
-import stat
 import sys
 from pathlib import Path
 
@@ -693,7 +691,6 @@ def test_find_env_file_permission_error_on_create(tmp_path, monkeypatch):
     """Raises EnvFileError if cannot create .env.uve due to permissions."""
     # Create a scenario where we can't create the file
     # We'll mock Path.touch to raise PermissionError
-    from unittest.mock import MagicMock
 
     original_touch = Path.touch
 

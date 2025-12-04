@@ -1,7 +1,5 @@
 """Tests for CLI main module."""
 
-import sys
-from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner

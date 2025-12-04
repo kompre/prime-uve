@@ -6,7 +6,7 @@ from typing import Optional
 
 import click
 
-from prime_uve.cli.output import error, info, success, warning
+from prime_uve.cli.output import error, info
 from prime_uve.cli.decorators import common_options, handle_errors
 
 
@@ -45,15 +45,24 @@ def cli(ctx):
 
 
 @cli.command()
+@click.option("--force", "-f", is_flag=True, help="Reinitialize even if already set up")
+@click.option("--venv-dir", type=click.Path(), help="Override venv base directory")
 @common_options
 @handle_errors
 @click.pass_context
-def init(ctx, verbose: bool, yes: bool, dry_run: bool, json_output: bool):
+def init(
+    ctx,
+    force: bool,
+    venv_dir: Optional[str],
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+):
     """Initialize project with external venv."""
-    if verbose:
-        info("init command - not yet implemented")
-    error("Command not implemented yet")
-    sys.exit(1)
+    from prime_uve.cli.init import init_command
+
+    init_command(ctx, force, venv_dir, verbose, yes, dry_run, json_output)
 
 
 @cli.command()

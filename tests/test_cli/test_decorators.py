@@ -1,10 +1,7 @@
 """Tests for CLI decorators."""
 
-import sys
-from unittest.mock import patch
 
 import click
-import pytest
 from click.testing import CliRunner
 
 from prime_uve.cli.decorators import common_options, handle_errors
