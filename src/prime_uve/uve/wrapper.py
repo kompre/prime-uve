@@ -58,7 +58,9 @@ def main() -> None:
 
     # 4. Check if uv is available
     if not is_uv_available():
-        print("Error: 'uv' command not found. Please install uv first.", file=sys.stderr)
+        print(
+            "Error: 'uv' command not found. Please install uv first.", file=sys.stderr
+        )
         print("Visit: https://github.com/astral-sh/uv", file=sys.stderr)
         sys.exit(1)
 

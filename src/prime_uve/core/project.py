@@ -149,7 +149,11 @@ def get_project_metadata(project_path: Path) -> ProjectMetadata:
 
                 # Extract name (must be non-empty string)
                 name_from_toml = project_section.get("name")
-                if name_from_toml and isinstance(name_from_toml, str) and name_from_toml.strip():
+                if (
+                    name_from_toml
+                    and isinstance(name_from_toml, str)
+                    and name_from_toml.strip()
+                ):
                     name = name_from_toml.strip()
 
                 # Extract optional fields

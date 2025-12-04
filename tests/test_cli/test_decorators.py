@@ -1,6 +1,5 @@
 """Tests for CLI decorators."""
 
-
 import click
 from click.testing import CliRunner
 

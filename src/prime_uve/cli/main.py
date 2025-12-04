@@ -108,7 +108,9 @@ def prune(
     """
     from prime_uve.cli.prune import prune_command
 
-    prune_command(ctx, all_venvs, orphan, current, path, verbose, yes, dry_run, json_output)
+    prune_command(
+        ctx, all_venvs, orphan, current, path, verbose, yes, dry_run, json_output
+    )
 
 
 @cli.command()

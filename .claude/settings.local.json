@@ -17,7 +17,9 @@
       "Bash(uv run:*)",
       "Bash(findstr:*)",
       "Bash(echo:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(gh label create:*)",
+      "Bash(gh pr edit:*)"
     ],
     "deny": [],
     "ask": []
