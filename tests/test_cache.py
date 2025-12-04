@@ -447,7 +447,7 @@ def _concurrent_writer(cache_path, project_path, index):
 
 @pytest.mark.skipif(
     sys.platform == "win32",
-    reason="Multiprocessing concurrency test is flaky on Windows"
+    reason="Multiprocessing concurrency test is flaky on Windows",
 )
 def test_concurrent_writes(tmp_path):
     """Multiple processes can write without corruption."""
@@ -498,9 +498,7 @@ def test_lock_timeout(tmp_path):
         with pytest.raises(CacheError) as exc_info:
             project_path = tmp_path / "test"
             project_path.mkdir()
-            cache2.add_mapping(
-                project_path, "${HOME}/test", "test", "12345678"
-            )
+            cache2.add_mapping(project_path, "${HOME}/test", "test", "12345678")
 
         assert "lock" in str(exc_info.value).lower()
         assert "10 seconds" in str(exc_info.value)
@@ -720,16 +718,12 @@ def test_validation_result_properties():
     assert not result_valid.is_orphaned
     assert not result_valid.has_mismatch
 
-    result_orphaned = ValidationResult(
-        status="orphaned", issues=["Project missing"]
-    )
+    result_orphaned = ValidationResult(status="orphaned", issues=["Project missing"])
     assert not result_orphaned.is_valid
     assert result_orphaned.is_orphaned
     assert not result_orphaned.has_mismatch
 
-    result_mismatch = ValidationResult(
-        status="mismatch", issues=["Path mismatch"]
-    )
+    result_mismatch = ValidationResult(status="mismatch", issues=["Path mismatch"])
     assert not result_mismatch.is_valid
     assert not result_mismatch.is_orphaned
     assert result_mismatch.has_mismatch

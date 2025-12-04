@@ -223,9 +223,13 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
         # Wide format with disk usage
         for result in results:
             # Handle both ValidationResult and untracked venv dicts
-            is_valid = result.is_valid if hasattr(result, "is_valid") else result["is_valid"]
+            is_valid = (
+                result.is_valid if hasattr(result, "is_valid") else result["is_valid"]
+            )
             project_name = (
-                result.project_name if hasattr(result, "project_name") else result["project_name"]
+                result.project_name
+                if hasattr(result, "project_name")
+                else result["project_name"]
             )
             disk_usage = (
                 result.disk_usage_bytes
@@ -239,14 +243,24 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             )
             hash_val = result.hash if hasattr(result, "hash") else result.get("hash")
             created_at = (
-                result.created_at if hasattr(result, "created_at") else result.get("created_at")
+                result.created_at
+                if hasattr(result, "created_at")
+                else result.get("created_at")
             )
-            venv_path = result.venv_path if hasattr(result, "venv_path") else result.get("venv_path")
+            venv_path = (
+                result.venv_path
+                if hasattr(result, "venv_path")
+                else result.get("venv_path")
+            )
             env_venv_path = (
-                result.env_venv_path if hasattr(result, "env_venv_path") else result.get("env_venv_path")
+                result.env_venv_path
+                if hasattr(result, "env_venv_path")
+                else result.get("env_venv_path")
             )
             project_path = (
-                result.project_path if hasattr(result, "project_path") else result.get("project_path")
+                result.project_path
+                if hasattr(result, "project_path")
+                else result.get("project_path")
             )
 
             # Use ASCII-safe symbols for Windows compatibility
@@ -273,9 +287,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
 
             if not is_valid and venv_path:
                 echo(f"  Cache:     {venv_path}")
-                echo(
-                    f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}"
-                )
+                echo(f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}")
             echo("")
     else:
         # Compact format - venv path at end so it can be full-length/clickable
@@ -285,9 +297,13 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
 
         for result in results:
             # Handle both ValidationResult and untracked venv dicts
-            is_valid = result.is_valid if hasattr(result, "is_valid") else result["is_valid"]
+            is_valid = (
+                result.is_valid if hasattr(result, "is_valid") else result["is_valid"]
+            )
             project_name = (
-                result.project_name if hasattr(result, "project_name") else result["project_name"]
+                result.project_name
+                if hasattr(result, "project_name")
+                else result["project_name"]
             )
             venv_path_expanded = (
                 result.venv_path_expanded
@@ -429,7 +445,11 @@ def list_command(
 
     # 4. Filter if requested
     if orphan_only:
-        results = [r for r in results if not (r.is_valid if hasattr(r, "is_valid") else r["is_valid"])]
+        results = [
+            r
+            for r in results
+            if not (r.is_valid if hasattr(r, "is_valid") else r["is_valid"])
+        ]
 
         if not results:
             if json_output:
@@ -453,12 +473,20 @@ def list_command(
     total_untracked = len(untracked_venvs)
     total_count = total_cached + total_untracked
 
-    valid_count = sum(1 for r in results if (r.is_valid if hasattr(r, "is_valid") else r["is_valid"]))
+    valid_count = sum(
+        1 for r in results if (r.is_valid if hasattr(r, "is_valid") else r["is_valid"])
+    )
     orphaned_count = sum(
-        1 for r in results if not (r.is_valid if hasattr(r, "is_valid") else r["is_valid"])
+        1
+        for r in results
+        if not (r.is_valid if hasattr(r, "is_valid") else r["is_valid"])
     )
     total_disk = sum(
-        (r.disk_usage_bytes if hasattr(r, "disk_usage_bytes") else r["disk_usage_bytes"])
+        (
+            r.disk_usage_bytes
+            if hasattr(r, "disk_usage_bytes")
+            else r["disk_usage_bytes"]
+        )
         for r in results
     )
 

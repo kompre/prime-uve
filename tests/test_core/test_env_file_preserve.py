@@ -1,7 +1,5 @@
 """Tests for update_env_file_preserve_format function."""
 
-
-
 from prime_uve.core.env_file import update_env_file_preserve_format
 
 
@@ -10,7 +8,9 @@ def test_preserve_format_adds_to_empty_file(tmp_path):
     env_file = tmp_path / ".env.uve"
     env_file.write_text("")
 
-    update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"})
+    update_env_file_preserve_format(
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"}
+    )
 
     content = env_file.read_text()
     assert "UV_PROJECT_ENVIRONMENT=${HOME}/venvs/test" in content
@@ -20,7 +20,9 @@ def test_preserve_format_adds_to_new_file(tmp_path):
     """Test adding variable to non-existent file."""
     env_file = tmp_path / ".env.uve"
 
-    update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"})
+    update_env_file_preserve_format(
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"}
+    )
 
     assert env_file.exists()
     content = env_file.read_text()
@@ -38,7 +40,9 @@ API_KEY=secret
 """
     )
 
-    update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"})
+    update_env_file_preserve_format(
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"}
+    )
 
     content = env_file.read_text()
     assert "# This is a comment" in content
@@ -58,7 +62,9 @@ API_KEY=secret
 """
     )
 
-    update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"})
+    update_env_file_preserve_format(
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"}
+    )
 
     lines = env_file.read_text().splitlines()
     # Should have blank line between DATABASE_URL and API_KEY
@@ -75,7 +81,9 @@ API_KEY=secret
 """
     )
 
-    update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/new"})
+    update_env_file_preserve_format(
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/new"}
+    )
 
     content = env_file.read_text()
     lines = content.splitlines()
@@ -100,7 +108,9 @@ API_KEY=secret
 """
     )
 
-    update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"})
+    update_env_file_preserve_format(
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/test"}
+    )
 
     lines = env_file.read_text().splitlines()
 
@@ -156,7 +166,9 @@ DEBUG=true
 """
     )
 
-    update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/proj_abc"})
+    update_env_file_preserve_format(
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/venvs/proj_abc"}
+    )
 
     content = env_file.read_text()
 

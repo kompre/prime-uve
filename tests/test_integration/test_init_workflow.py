@@ -51,7 +51,9 @@ def test_init_then_uve_sync(runner, test_project, cache_file, monkeypatch):
     """Test that uve sync works after init (venv created by uv)."""
     monkeypatch.chdir(test_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # Run init
         result = runner.invoke(cli, ["init"])
         assert result.exit_code == 0
@@ -72,7 +74,9 @@ def test_init_then_list(runner, test_project, cache_file, monkeypatch):
     """Test that init + list shows correct entry."""
     monkeypatch.chdir(test_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # Run init
         result = runner.invoke(cli, ["init"])
         assert result.exit_code == 0
@@ -95,7 +99,9 @@ def test_init_force_workflow(runner, test_project, cache_file, monkeypatch):
     """Test force reinitialization workflow."""
     monkeypatch.chdir(test_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # First init
         result1 = runner.invoke(cli, ["init"])
         assert result1.exit_code == 0
@@ -124,7 +130,9 @@ def test_init_cross_platform_paths(runner, test_project, cache_file, monkeypatch
     """Test that paths work correctly on all platforms."""
     monkeypatch.chdir(test_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
         assert result.exit_code == 0
 
@@ -148,7 +156,9 @@ def test_init_cross_platform_paths(runner, test_project, cache_file, monkeypatch
         assert venv_path.count("${HOME}") == 1
 
 
-def test_init_preserves_existing_env_vars(runner, test_project, cache_file, monkeypatch):
+def test_init_preserves_existing_env_vars(
+    runner, test_project, cache_file, monkeypatch
+):
     """Test that init preserves existing variables in .env.uve."""
     monkeypatch.chdir(test_project)
 
@@ -162,7 +172,9 @@ DEBUG=true
 """
     )
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # Run init - should preserve existing variables
         result = runner.invoke(cli, ["init"])
         assert result.exit_code == 0

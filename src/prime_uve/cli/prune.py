@@ -540,9 +540,7 @@ def prune_current(
 
     # Confirm unless --yes
     if not yes and not dry_run:
-        if not click.confirm(
-            f"Remove venv for '{project_name}' and clear .env.uve?"
-        ):
+        if not click.confirm(f"Remove venv for '{project_name}' and clear .env.uve?"):
             info("Aborted.")
             return
 

@@ -44,7 +44,9 @@ def test_init_creates_env_file(runner, mock_project, cache_file, monkeypatch):
     """Test that init creates .env.uve with correct content."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
 
         assert result.exit_code == 0, f"Failed with: {result.output}"
@@ -62,7 +64,9 @@ def test_init_adds_to_cache(runner, mock_project, cache_file, monkeypatch):
     """Test that init adds mapping to cache."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
 
         assert result.exit_code == 0
@@ -73,11 +77,15 @@ def test_init_adds_to_cache(runner, mock_project, cache_file, monkeypatch):
         assert str(mock_project) in mappings
 
 
-def test_init_uses_variable_form_in_env_file(runner, mock_project, cache_file, monkeypatch):
+def test_init_uses_variable_form_in_env_file(
+    runner, mock_project, cache_file, monkeypatch
+):
     """Test that .env.uve contains ${HOME} not expanded path."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
 
         assert result.exit_code == 0
@@ -94,11 +102,15 @@ def test_init_uses_variable_form_in_env_file(runner, mock_project, cache_file, m
         assert home not in content
 
 
-def test_init_success_message_shows_next_steps(runner, mock_project, cache_file, monkeypatch):
+def test_init_success_message_shows_next_steps(
+    runner, mock_project, cache_file, monkeypatch
+):
     """Test that success output guides user."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
 
         assert result.exit_code == 0
@@ -112,11 +124,15 @@ def test_init_success_message_shows_next_steps(runner, mock_project, cache_file,
 # Already Initialized Tests
 
 
-def test_init_refuses_overwrite_without_force(runner, mock_project, cache_file, monkeypatch):
+def test_init_refuses_overwrite_without_force(
+    runner, mock_project, cache_file, monkeypatch
+):
     """Test that init refuses to overwrite when UV_PROJECT_ENVIRONMENT is set."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # First init
         result1 = runner.invoke(cli, ["init"])
         assert result1.exit_code == 0
@@ -138,7 +154,9 @@ def test_init_allows_init_when_env_file_exists_without_uv_var(
     env_file = mock_project / ".env.uve"
     env_file.write_text("DATABASE_URL=postgres://localhost\nAPI_KEY=secret\n")
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
 
         # Should succeed
@@ -155,7 +173,9 @@ def test_init_force_overwrites(runner, mock_project, cache_file, monkeypatch):
     """Test that init --force overwrites existing setup."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # First init
         runner.invoke(cli, ["init"])
 
@@ -169,7 +189,9 @@ def test_init_force_preserves_other_vars(runner, mock_project, cache_file, monke
     """Test that --force preserves other env vars in .env.uve."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # First init
         runner.invoke(cli, ["init"])
 
@@ -192,7 +214,9 @@ def test_init_force_preserves_format(runner, mock_project, cache_file, monkeypat
     """Test that --force preserves file format and order."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # First init
         runner.invoke(cli, ["init"])
 
@@ -226,13 +250,17 @@ def test_init_force_shows_confirmation(runner, mock_project, cache_file, monkeyp
     """Test that --force prompts for confirmation without --yes when venv path changes."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # First init
         runner.invoke(cli, ["init"])
 
         # Manually change the venv path in .env.uve to create a different path
         env_file = mock_project / ".env.uve"
-        env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/old_venv_path\n")
+        env_file.write_text(
+            "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/old_venv_path\n"
+        )
 
         # Force without --yes should prompt (we'll cancel it)
         result = runner.invoke(cli, ["init", "--force"], input="n\n")
@@ -247,7 +275,9 @@ def test_init_dry_run(runner, mock_project, cache_file, monkeypatch):
     """Test that --dry-run shows plan without executing."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init", "--dry-run"])
 
         assert result.exit_code == 0
@@ -262,7 +292,9 @@ def test_init_json_output(runner, mock_project, cache_file, monkeypatch):
     """Test that --json outputs valid JSON."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init", "--json"])
 
         assert result.exit_code == 0
@@ -276,11 +308,15 @@ def test_init_json_output(runner, mock_project, cache_file, monkeypatch):
         assert "cache" in data
 
 
-def test_init_yes_flag_skips_confirmation(runner, mock_project, cache_file, monkeypatch):
+def test_init_yes_flag_skips_confirmation(
+    runner, mock_project, cache_file, monkeypatch
+):
     """Test that --yes skips confirmation prompts."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         # First init
         runner.invoke(cli, ["init"])
 
@@ -295,13 +331,19 @@ def test_init_verbose_mode(runner, mock_project, cache_file, monkeypatch):
     """Test that --verbose shows detailed output."""
     monkeypatch.chdir(mock_project)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init", "--verbose"])
 
         assert result.exit_code == 0
         # Verbose output should show more details
         output = result.output
-        assert "Project name:" in output or "Project root:" in output or "test" in output.lower()
+        assert (
+            "Project name:" in output
+            or "Project root:" in output
+            or "test" in output.lower()
+        )
 
 
 # Error Handling Tests
@@ -314,7 +356,9 @@ def test_init_not_in_project(runner, tmp_path, cache_file, monkeypatch):
     empty_dir.mkdir()
     monkeypatch.chdir(empty_dir)
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
 
         assert result.exit_code == 1
@@ -331,9 +375,12 @@ def test_init_permission_denied_env_file(runner, mock_project, cache_file, monke
 
         raise EnvFileError("Permission denied")
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         with patch(
-            "prime_uve.cli.init.update_env_file_preserve_format", side_effect=mock_update
+            "prime_uve.cli.init.update_env_file_preserve_format",
+            side_effect=mock_update,
         ):
             result = runner.invoke(cli, ["init"])
 
@@ -345,9 +392,12 @@ def test_init_cache_write_failure(runner, mock_project, cache_file, monkeypatch)
     monkeypatch.chdir(mock_project)
 
     # Mock add_mapping to raise exception
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         with patch(
-            "prime_uve.core.cache.Cache.add_mapping", side_effect=Exception("Cache error")
+            "prime_uve.core.cache.Cache.add_mapping",
+            side_effect=Exception("Cache error"),
         ):
             result = runner.invoke(cli, ["init"])
 
@@ -367,7 +417,9 @@ def test_init_no_project_name_in_pyproject(runner, tmp_path, cache_file, monkeyp
     pyproject = project_dir / "pyproject.toml"
     pyproject.write_text('[project]\nversion = "0.1.0"\n')
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
 
         assert result.exit_code == 0
@@ -390,7 +442,9 @@ def test_init_long_project_path(runner, tmp_path, cache_file, monkeypatch):
     pyproject = project_dir / "pyproject.toml"
     pyproject.write_text('[project]\nname = "test"\nversion = "0.1.0"\n')
 
-    with patch("prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file):
+    with patch(
+        "prime_uve.core.cache.Cache._default_cache_path", return_value=cache_file
+    ):
         result = runner.invoke(cli, ["init"])
 
         # Should succeed - hash keeps venv path reasonable
