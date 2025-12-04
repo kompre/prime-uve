@@ -8,8 +8,7 @@ Implement the `prime-uve list` command to display all managed venvs with validat
 
 This is a diagnostic and information command that helps users:
 - See all projects managed by prime-uve
-- Identify orphaned venvs (project deleted or moved)
-- Detect path mismatches (cache vs .env.uve disagreement)
+- Identify orphaned venvs (cache doesn't match .env.uve)
 - Get quick overview of disk usage
 
 ## Dependencies
@@ -28,32 +27,19 @@ This is a diagnostic and information command that helps users:
 
 ### 1. Implementation Files
 
-**`src/prime_uve/cli/list.py`** (~200-250 lines)
+**`src/prime_uve/cli/list.py`** (~150-200 lines)
 - Main `list` command implementation
-- Validation logic for each cached project:
-  - Project directory exists
-  - Venv directory exists
-  - `.env.uve` exists and contains matching path
+- Simplified validation logic: Does cached venv_path match `UV_PROJECT_ENVIRONMENT` in `.env.uve`?
+  - Match → ✓ Valid
+  - No match (any reason) → ✗ Orphan
 - Table formatting for terminal output
 - JSON formatting for machine-readable output
-- Statistics summary (total, valid, orphaned, mismatched)
-
-**`src/prime_uve/core/validation.py`** (~150 lines)
-- Validation utilities:
-  - `ValidationResult` dataclass with status and details
-  - `validate_project_mapping(project_path, cache_entry) -> ValidationResult`
-  - `validate_all_mappings(cache) -> list[ValidationResult]`
-  - `get_disk_usage(venv_path) -> int` - Calculate venv size
-- Status types:
-  - `VALID` - Everything matches and exists
-  - `PROJECT_MISSING` - Project directory deleted
-  - `VENV_MISSING` - Venv directory doesn't exist
-  - `PATH_MISMATCH` - .env.uve has different path than cache
-  - `ENV_FILE_MISSING` - .env.uve file not found
+- Statistics summary (total, valid, orphaned)
+- Disk usage calculation (for --verbose mode)
 
 ### 2. Test Suite
 
-**`tests/test_cli/test_list.py`** (~18-20 tests)
+**`tests/test_cli/test_list.py`** (~12-15 tests)
 
 **Test Categories:**
 
@@ -63,45 +49,24 @@ This is a diagnostic and information command that helps users:
    - Multiple projects listed correctly
    - Table formatting is correct
 
-2. **Validation States** (5 tests)
-   - Valid project shows ✓ status
-   - Project missing shows ✗ status
-   - Venv missing shows ⚠ status
-   - Path mismatch shows ⚠ status
-   - .env.uve missing shows ⚠ status
+2. **Validation States** (3 tests)
+   - Valid project shows ✓ status (cache matches .env.uve)
+   - Orphan status shows ✗ (cache doesn't match .env.uve)
+   - Orphan status shows ✗ (.env.uve missing or project deleted)
 
-3. **Filtering** (3 tests)
-   - `--orphan-only` shows only invalid entries
+3. **Filtering** (2 tests)
+   - `--orphan-only` shows only orphaned entries
    - `--orphan-only` with no orphans shows message
-   - `--valid-only` shows only valid entries
 
 4. **Output Formats** (4 tests)
    - Table output formatting
    - `--json` outputs valid JSON
    - `--json` with empty cache
-   - `--verbose` shows additional details
+   - `--verbose` shows additional details and disk usage
 
 5. **Statistics** (2 tests)
    - Summary shows correct counts (total, valid, orphaned)
    - Disk usage calculation (when `--verbose`)
-
-**`tests/test_core/test_validation.py`** (~12 tests)
-
-1. **Validation Logic** (8 tests)
-   - Validate valid project mapping
-   - Detect missing project directory
-   - Detect missing venv directory
-   - Detect path mismatch
-   - Detect missing .env.uve file
-   - Handle malformed .env.uve
-   - Handle permission errors
-   - Validate all mappings at once
-
-2. **Disk Usage** (4 tests)
-   - Calculate venv disk usage
-   - Handle missing directory
-   - Handle permission errors
-   - Format human-readable sizes
 
 ### 3. Integration Points
 
@@ -147,10 +112,10 @@ PROJECT             VENV PATH                        STATUS
 ─────────────────────────────────────────────────────────────────────────
 myproject           ~/prime-uve/venvs/myproj_a1b2    ✓ Valid
 another-project     ~/prime-uve/venvs/anothe_c3d4    ✓ Valid
-old-project         ~/prime-uve/venvs/oldpro_e5f6    ✗ Project deleted
-broken-project      ~/prime-uve/venvs/broken_g7h8    ⚠ Path mismatch
+old-project         ~/prime-uve/venvs/oldpro_e5f6    ✗ Orphan
+broken-project      ~/prime-uve/venvs/broken_g7h8    ✗ Orphan
 
-Summary: 4 total, 2 valid, 1 orphaned, 1 mismatch
+Summary: 4 total, 2 valid, 2 orphaned
 ```
 
 **Success (table format - verbose):**
@@ -171,16 +136,15 @@ another-project     ~/prime-uve/venvs/anothe_c3d4    89 MB     ✓ Valid
   Hash:    c3d4e5f6
   Created: 2025-12-02 14:22:10
 
-old-project         ~/prime-uve/venvs/oldpro_e5f6    0 B       ✗ Project deleted
-  Project: /home/user/projects/old-project (NOT FOUND)
-  Venv:    /home/user/prime-uve/venvs/old-project_e5f6g7h8 (exists)
+old-project         ~/prime-uve/venvs/oldpro_e5f6    0 B       ✗ Orphan
+  Cache:     ${HOME}/prime-uve/venvs/old-project_e5f6g7h8
+  .env.uve:  Not found (or path mismatch)
 
-broken-project      ~/prime-uve/venvs/broken_g7h8    156 MB    ⚠ Path mismatch
+broken-project      ~/prime-uve/venvs/broken_g7h8    156 MB    ✗ Orphan
   Cache:     ${HOME}/prime-uve/venvs/broken-project_g7h8i9j0
   .env.uve:  ${HOME}/prime-uve/venvs/broken-project_k1l2m3n4
-  Reason:    Project may have been reinitialized with --force
 
-Summary: 4 total, 2 valid, 1 orphaned, 1 mismatch
+Summary: 4 total, 2 valid, 2 orphaned
 Total disk usage: 370 MB
 ```
 
@@ -190,9 +154,10 @@ Orphaned Virtual Environments
 
 PROJECT             VENV PATH                        STATUS
 ────────────────────────────────────────────────────────────────────────
-old-project         ~/prime-uve/venvs/oldpro_e5f6    ✗ Project deleted
+old-project         ~/prime-uve/venvs/oldpro_e5f6    ✗ Orphan
+broken-project      ~/prime-uve/venvs/broken_g7h8    ✗ Orphan
 
-Found 1 orphaned venv. Run 'prime-uve prune --orphan' to clean up.
+Found 2 orphaned venvs. Run 'prime-uve prune --orphan' to clean up.
 ```
 
 **Success (--json):**
@@ -207,12 +172,7 @@ Found 1 orphaned venv. Run 'prime-uve prune --orphan' to clean up.
       "hash": "a1b2c3d4",
       "created_at": "2025-12-01T10:30:45Z",
       "status": "valid",
-      "validation": {
-        "project_exists": true,
-        "venv_exists": true,
-        "env_file_exists": true,
-        "paths_match": true
-      },
+      "cache_matches_env": true,
       "disk_usage_bytes": 131072000
     },
     {
@@ -222,13 +182,8 @@ Found 1 orphaned venv. Run 'prime-uve prune --orphan' to clean up.
       "venv_path_expanded": "/home/user/prime-uve/venvs/old-project_e5f6g7h8",
       "hash": "e5f6g7h8",
       "created_at": "2025-11-15T09:12:33Z",
-      "status": "project_missing",
-      "validation": {
-        "project_exists": false,
-        "venv_exists": true,
-        "env_file_exists": false,
-        "paths_match": false
-      },
+      "status": "orphan",
+      "cache_matches_env": false,
       "disk_usage_bytes": 0
     }
   ],
@@ -236,7 +191,6 @@ Found 1 orphaned venv. Run 'prime-uve prune --orphan' to clean up.
     "total": 2,
     "valid": 1,
     "orphaned": 1,
-    "mismatched": 0,
     "total_disk_usage_bytes": 131072000
   }
 }
@@ -257,7 +211,6 @@ Run 'prime-uve init' in a project directory to get started.
     "total": 0,
     "valid": 0,
     "orphaned": 0,
-    "mismatched": 0,
     "total_disk_usage_bytes": 0
   }
 }
@@ -289,17 +242,14 @@ def list_command(ctx, orphan_only, valid_only, verbose, yes, dry_run, json_outpu
 
     # 3. Filter if requested
     if orphan_only:
-        results = [r for r in results if r.status != ValidationStatus.VALID]
-    elif valid_only:
-        results = [r for r in results if r.status == ValidationStatus.VALID]
+        results = [r for r in results if not r.is_valid]
 
     # 4. Calculate statistics
     stats = {
         "total": len(mappings),
-        "valid": sum(1 for r in results if r.status == ValidationStatus.VALID),
-        "orphaned": sum(1 for r in results if r.status == ValidationStatus.PROJECT_MISSING),
-        "mismatched": sum(1 for r in results if r.status == ValidationStatus.PATH_MISMATCH),
-        "total_disk_usage": sum(get_disk_usage(r.venv_path_expanded) for r in results)
+        "valid": sum(1 for r in results if r.is_valid),
+        "orphaned": sum(1 for r in results if not r.is_valid),
+        "total_disk_usage": sum(r.disk_usage_bytes for r in results)
     }
 
     # 5. Output
@@ -314,59 +264,47 @@ def list_command(ctx, orphan_only, valid_only, verbose, yes, dry_run, json_outpu
                  f"Run 'prime-uve prune --orphan' to clean up.")
 ```
 
-### Validation Logic
+### Validation Logic (Simplified)
 
 ```python
 @dataclass
 class ValidationResult:
     project_name: str
     project_path: Path
-    venv_path: str  # Variable form
-    venv_path_expanded: Path  # Actual path
+    venv_path: str  # Variable form from cache
+    venv_path_expanded: Path  # Expanded for local operations
     hash: str
     created_at: str
-    status: ValidationStatus
-    details: dict
+    is_valid: bool  # Simple: cache matches .env.uve or not
+    env_venv_path: str | None  # What's in .env.uve (for verbose display)
     disk_usage_bytes: int
 
 def validate_project_mapping(project_path: str, cache_entry: dict) -> ValidationResult:
+    """
+    Simplified validation: Does cached venv_path match UV_PROJECT_ENVIRONMENT in .env.uve?
+    - Match → Valid
+    - No match (any reason) → Orphan
+    """
     project_path = Path(project_path)
     venv_path = cache_entry["venv_path"]
     venv_path_expanded = expand_path_variables(venv_path)
 
-    details = {
-        "project_exists": project_path.exists(),
-        "venv_exists": venv_path_expanded.exists(),
-        "env_file_exists": False,
-        "paths_match": False
-    }
+    # Single check: does .env.uve match cache?
+    env_venv_path = None
+    is_valid = False
 
-    # Check .env.uve
     env_file = project_path / ".env.uve"
-    if env_file.exists():
-        details["env_file_exists"] = True
-        try:
+    try:
+        if env_file.exists():
             env_vars = read_env_file(env_file)
             env_venv_path = env_vars.get("UV_PROJECT_ENVIRONMENT")
-            details["paths_match"] = env_venv_path == venv_path
-        except Exception:
-            pass
+            is_valid = (env_venv_path == venv_path)
+    except Exception:
+        pass  # Any error → not valid
 
-    # Determine status
-    if not details["project_exists"]:
-        status = ValidationStatus.PROJECT_MISSING
-    elif not details["venv_exists"]:
-        status = ValidationStatus.VENV_MISSING
-    elif not details["env_file_exists"]:
-        status = ValidationStatus.ENV_FILE_MISSING
-    elif not details["paths_match"]:
-        status = ValidationStatus.PATH_MISMATCH
-    else:
-        status = ValidationStatus.VALID
-
-    # Get disk usage (only if venv exists)
+    # Get disk usage if venv exists
     disk_usage = 0
-    if details["venv_exists"]:
+    if venv_path_expanded.exists():
         try:
             disk_usage = get_disk_usage(venv_path_expanded)
         except Exception:
@@ -379,8 +317,8 @@ def validate_project_mapping(project_path: str, cache_entry: dict) -> Validation
         venv_path_expanded=venv_path_expanded,
         hash=cache_entry["path_hash"],
         created_at=cache_entry["created_at"],
-        status=status,
-        details=details,
+        is_valid=is_valid,
+        env_venv_path=env_venv_path,
         disk_usage_bytes=disk_usage
     )
 ```
@@ -394,8 +332,8 @@ def output_table(results: list[ValidationResult], stats: dict, verbose: bool):
     if verbose:
         # Wide format with disk usage
         for result in results:
-            status_symbol = get_status_symbol(result.status)
-            status_text = get_status_text(result.status)
+            status_symbol = "✓" if result.is_valid else "✗"
+            status_text = "Valid" if result.is_valid else "Orphan"
             size = format_bytes(result.disk_usage_bytes)
 
             # Truncate paths for readability
@@ -409,8 +347,9 @@ def output_table(results: list[ValidationResult], stats: dict, verbose: bool):
             echo(f"  Hash:    {result.hash}")
             echo(f"  Created: {result.created_at}")
 
-            if result.status != ValidationStatus.VALID:
-                echo(f"  Issue:   {result.details}")
+            if not result.is_valid:
+                echo(f"  Cache:     {result.venv_path}")
+                echo(f"  .env.uve:  {result.env_venv_path or 'Not found (or path mismatch)'}")
             echo()
     else:
         # Compact format
@@ -419,15 +358,15 @@ def output_table(results: list[ValidationResult], stats: dict, verbose: bool):
         echo("─" * len(header))
 
         for result in results:
-            status_symbol = get_status_symbol(result.status)
-            status_text = get_status_text(result.status)
+            status_symbol = "✓" if result.is_valid else "✗"
+            status_text = "Valid" if result.is_valid else "Orphan"
             venv_short = truncate_path(result.venv_path, 32)
 
             echo(f"{result.project_name:<20} {venv_short:<32} {status_symbol} {status_text}")
 
     # Summary
     echo(f"\nSummary: {stats['total']} total, {stats['valid']} valid, "
-         f"{stats['orphaned']} orphaned, {stats['mismatched']} mismatch")
+         f"{stats['orphaned']} orphaned")
 
     if verbose and stats['total_disk_usage'] > 0:
         total_size = format_bytes(stats['total_disk_usage'])
@@ -439,17 +378,13 @@ def output_table(results: list[ValidationResult], stats: dict, verbose: bool):
 ### Functional Requirements
 
 - [ ] Lists all projects tracked in cache
-- [ ] Validates each project mapping
-- [ ] Shows correct status symbols (✓/✗/⚠)
-- [ ] Detects missing project directories
-- [ ] Detects missing venv directories
-- [ ] Detects .env.uve path mismatches
-- [ ] `--orphan-only` filters to invalid entries only
-- [ ] `--valid-only` filters to valid entries only
+- [ ] Validates each project mapping using simple 1:1 comparison (cache vs .env.uve)
+- [ ] Shows correct status symbols (✓ Valid / ✗ Orphan only)
+- [ ] `--orphan-only` filters to orphaned entries only
 - [ ] `--verbose` shows extended information and disk usage
 - [ ] `--json` outputs machine-readable JSON
 - [ ] Empty cache shows helpful message
-- [ ] Summary statistics are accurate
+- [ ] Summary statistics are accurate (total, valid, orphaned)
 
 ### Non-Functional Requirements
 
@@ -464,9 +399,9 @@ def output_table(results: list[ValidationResult], stats: dict, verbose: bool):
 
 - [ ] Table columns are aligned
 - [ ] Paths are shortened to fit terminal width
-- [ ] Status symbols are colored (green ✓, red ✗, yellow ⚠)
-- [ ] Summary line shows counts
-- [ ] Verbose mode shows full paths and details
+- [ ] Status symbols are colored (green ✓, red ✗ only)
+- [ ] Summary line shows counts (total, valid, orphaned)
+- [ ] Verbose mode shows full paths and cache vs .env.uve comparison
 - [ ] JSON output is valid and parseable
 - [ ] Helpful tips when orphans detected
 
@@ -487,19 +422,10 @@ def test_list_multiple_projects(tmp_path):
     """Test list with multiple projects"""
 
 def test_list_orphaned_project(tmp_path):
-    """Test list detects missing project directory"""
-
-def test_list_missing_venv(tmp_path):
-    """Test list detects missing venv directory"""
-
-def test_list_path_mismatch(tmp_path):
-    """Test list detects .env.uve path mismatch"""
+    """Test list detects orphan (cache doesn't match .env.uve)"""
 
 def test_list_orphan_only_filter(tmp_path):
-    """Test --orphan-only shows only invalid entries"""
-
-def test_list_valid_only_filter(tmp_path):
-    """Test --valid-only shows only valid entries"""
+    """Test --orphan-only shows only orphaned entries"""
 
 def test_list_verbose_mode(tmp_path):
     """Test --verbose shows extended information"""
@@ -516,22 +442,16 @@ def test_list_path_truncation():
 def test_list_statistics_accuracy(tmp_path):
     """Test summary statistics are correct"""
 
-# tests/test_core/test_validation.py
+# Simplified validation tests
 
 def test_validate_valid_project(tmp_path):
-    """Test validation of valid project mapping"""
+    """Test validation when cache matches .env.uve"""
 
-def test_validate_missing_project(tmp_path):
-    """Test detection of missing project directory"""
+def test_validate_orphan_mismatch(tmp_path):
+    """Test validation when cache doesn't match .env.uve"""
 
-def test_validate_missing_venv(tmp_path):
-    """Test detection of missing venv directory"""
-
-def test_validate_path_mismatch(tmp_path):
-    """Test detection of .env.uve path mismatch"""
-
-def test_validate_missing_env_file(tmp_path):
-    """Test detection of missing .env.uve file"""
+def test_validate_orphan_missing_env(tmp_path):
+    """Test validation when .env.uve is missing"""
 
 def test_validate_permission_error(tmp_path, mocker):
     """Test handling of permission errors"""
@@ -564,7 +484,6 @@ def test_list_with_multiple_states(tmp_path):
 - [ ] Initialize project, verify it appears in list
 - [ ] Delete project, verify orphan status
 - [ ] Test `--orphan-only` filter
-- [ ] Test `--valid-only` filter
 - [ ] Test `--verbose` mode
 - [ ] Test `--json` output
 - [ ] Verify table formatting on different terminal widths
@@ -573,14 +492,15 @@ def test_list_with_multiple_states(tmp_path):
 
 ## Design Decisions
 
-### 1. Validation Status Types
+### 1. Simplified Validation Logic
 
-**Decision:** Use 5 distinct status types: VALID, PROJECT_MISSING, VENV_MISSING, ENV_FILE_MISSING, PATH_MISMATCH.
+**Decision:** Use binary validation: Valid (cache matches .env.uve) or Orphan (doesn't match).
 
 **Rationale:**
-- Provides granular diagnostic information
-- Helps user understand specific issue
-- Enables targeted fixes
+- `.env.uve` is the source of truth for what venv is actually used
+- Cache is just an index - if it disagrees with .env.uve, the cached venv is orphaned
+- Don't need to know WHY they disagree (project deleted, file missing, user edited, etc.)
+- Simpler code, easier to reason about, same practical outcome
 
 ### 2. Show Orphaned Count Even When Not Filtering
 
@@ -600,16 +520,7 @@ def test_list_with_multiple_states(tmp_path):
 - Full paths available when needed via --verbose
 - Balances brevity and completeness
 
-### 4. Calculate Disk Usage Only in Verbose Mode
-
-**Decision:** Skip disk usage calculation in normal mode, calculate in verbose mode.
-
-**Rationale:**
-- Performance - walking directory tree can be slow
-- Most users don't need this information regularly
-- Available when needed
-
-### 5. Default to Showing All (No Filter)
+### 4. Default to Showing All (No Filter)
 
 **Decision:** By default, show all projects regardless of status.
 
@@ -643,20 +554,14 @@ prime-uve list [OPTIONS]
 
   List all managed virtual environments with validation status.
 
-  Validation checks:
-    • Project directory exists
-    • Venv directory exists
-    • .env.uve file exists
-    • .env.uve path matches cache
+  Validation: Checks if cached venv path matches UV_PROJECT_ENVIRONMENT in .env.uve
 
   Status symbols:
-    ✓ Valid      - Everything is correct
-    ✗ Orphaned   - Project deleted or venv missing
-    ⚠ Mismatch   - .env.uve doesn't match cache
+    ✓ Valid      - Cache matches .env.uve
+    ✗ Orphan     - Cache doesn't match .env.uve (or .env.uve missing)
 
 Options:
-  --orphan-only          Show only orphaned/invalid venvs
-  --valid-only           Show only valid venvs
+  --orphan-only          Show only orphaned venvs
   -v, --verbose          Show detailed information and disk usage
   --json                 Output as JSON
   -h, --help             Show this message and exit
@@ -682,7 +587,7 @@ prime-uve list
 Output shows:
 - Project name
 - Venv location
-- Validation status (✓ valid, ✗ orphaned, ⚠ mismatch)
+- Validation status (✓ valid, ✗ orphan)
 
 ### Filters
 
