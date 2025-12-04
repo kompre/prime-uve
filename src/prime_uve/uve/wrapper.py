@@ -54,7 +54,7 @@ def main() -> None:
     # 3. Build command: uv run --env-file .env.uve -- uv [args...]
     args = sys.argv[1:]  # All args after 'uve'
     # Convert to POSIX format and escape spaces for uv --env-file quirk
-    env_file_str = env_file.as_posix().replace(' ', r'\ ')
+    env_file_str = env_file.as_posix().replace(" ", r"\ ")
     cmd = ["uv", "run", "--env-file", env_file_str, "--", "uv"] + args
 
     # 4. Check if uv is available
