@@ -416,7 +416,7 @@ def test_special_chars_in_project_name(tmp_path):
 def test_unicode_in_project_name(tmp_path):
     """Handles unicode in project name."""
     pyproject = tmp_path / "pyproject.toml"
-    pyproject.write_text('[project]\nname = "my-project-éçà"', encoding='utf-8')
+    pyproject.write_text('[project]\nname = "my-project-éçà"', encoding="utf-8")
 
     metadata = get_project_metadata(tmp_path)
 

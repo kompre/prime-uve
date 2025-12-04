@@ -85,7 +85,9 @@ class Cache:
 
                     # Handle corrupted or invalid cache
                     if not isinstance(data, dict):
-                        logger.warning("Cache file corrupted (not a dict), starting fresh")
+                        logger.warning(
+                            "Cache file corrupted (not a dict), starting fresh"
+                        )
                         return {"version": self.CURRENT_VERSION, "venvs": {}}
 
                     # Ensure required fields exist
@@ -94,7 +96,9 @@ class Cache:
 
                     return data
                 except json.JSONDecodeError:
-                    logger.warning("Cache file corrupted (invalid JSON), starting fresh")
+                    logger.warning(
+                        "Cache file corrupted (invalid JSON), starting fresh"
+                    )
                     return {"version": self.CURRENT_VERSION, "venvs": {}}
                 except Exception as e:
                     logger.error(f"Error loading cache: {e}")
@@ -277,8 +281,7 @@ class Cache:
 
         if not mapping:
             return ValidationResult(
-                status="error",
-                issues=["Mapping not found in cache"]
+                status="error", issues=["Mapping not found in cache"]
             )
 
         issues = []
@@ -303,8 +306,10 @@ class Cache:
                     env_content = env_file.read_text(encoding="utf-8").strip()
                     # Parse UV_PROJECT_ENVIRONMENT="..." from .env.uve
                     expected_prefix = 'UV_PROJECT_ENVIRONMENT="'
-                    if env_content.startswith(expected_prefix) and env_content.endswith('"'):
-                        env_venv_path = env_content[len(expected_prefix):-1]
+                    if env_content.startswith(expected_prefix) and env_content.endswith(
+                        '"'
+                    ):
+                        env_venv_path = env_content[len(expected_prefix) : -1]
                         cached_venv_path = mapping["venv_path"]
                         if env_venv_path != cached_venv_path:
                             issues.append(
@@ -329,19 +334,16 @@ class Cache:
 
             # Update last_validated timestamp
             if project_key in data["venvs"]:
-                data["venvs"][project_key]["last_validated"] = (
-                    datetime.now(timezone.utc).isoformat()
-                )
+                data["venvs"][project_key]["last_validated"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
                 self._save(data)
 
             return ValidationResult(status=status, issues=issues)
 
         except Exception as e:
             logger.error(f"Error validating mapping for {project_path}: {e}")
-            return ValidationResult(
-                status="error",
-                issues=[f"Validation error: {e}"]
-            )
+            return ValidationResult(status="error", issues=[f"Validation error: {e}"])
 
     def validate_all(self) -> dict[str, ValidationResult]:
         """Validate all cached mappings.
@@ -361,7 +363,9 @@ class Cache:
         Called automatically on load. Future-proofing for schema changes.
         """
         data = self._load()
-        needs_migration = "version" not in data or data["version"] != self.CURRENT_VERSION
+        needs_migration = (
+            "version" not in data or data["version"] != self.CURRENT_VERSION
+        )
         if needs_migration:
             self._migrate_data(data)
             self._save(data)

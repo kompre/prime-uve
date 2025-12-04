@@ -12,6 +12,7 @@ from .paths import expand_path_variables
 
 class EnvFileError(Exception):
     """Raised when .env.uve operations fail."""
+
     pass
 
 
@@ -172,7 +173,7 @@ def read_env_file(path: Path) -> dict[str, str]:
         '${HOME}/prime-uve/venvs/myproject_a1b2c3d4'  # NOT expanded
     """
     try:
-        content = path.read_text(encoding='utf-8')
+        content = path.read_text(encoding="utf-8")
     except FileNotFoundError as e:
         raise EnvFileError(f"File not found: {path}") from e
     except PermissionError as e:
@@ -187,16 +188,16 @@ def read_env_file(path: Path) -> dict[str, str]:
         line = line.strip()
 
         # Skip comments and empty lines
-        if not line or line.startswith('#'):
+        if not line or line.startswith("#"):
             continue
 
         # Parse key=value
-        if '=' not in line:
+        if "=" not in line:
             # Ignore malformed lines without '='
             continue
 
         # Split on first '=' to allow '=' in values
-        key, _, value = line.partition('=')
+        key, _, value = line.partition("=")
         key = key.strip()
         value = value.strip()
 
@@ -236,15 +237,15 @@ def write_env_file(path: Path, env_vars: dict[str, str]) -> None:
 
     # Build content
     lines = [f"{key}={env_vars[key]}" for key in sorted_keys]
-    content = '\n'.join(lines)
+    content = "\n".join(lines)
 
     # Add trailing newline if there's content
     if content:
-        content += '\n'
+        content += "\n"
 
     # Write file
     try:
-        path.write_text(content, encoding='utf-8')
+        path.write_text(content, encoding="utf-8")
     except PermissionError as e:
         raise EnvFileError(f"Permission denied: {path}") from e
     except OSError as e:
@@ -309,7 +310,7 @@ def update_env_file_preserve_format(path: Path, updates: dict[str, str]) -> None
 
     # Read existing content line by line
     try:
-        content = path.read_text(encoding='utf-8')
+        content = path.read_text(encoding="utf-8")
     except (FileNotFoundError, PermissionError, OSError) as e:
         raise EnvFileError(f"Cannot read file {path}: {e}") from e
 
@@ -322,13 +323,13 @@ def update_env_file_preserve_format(path: Path, updates: dict[str, str]) -> None
         stripped = line.strip()
 
         # Preserve comments and empty lines as-is
-        if not stripped or stripped.startswith('#'):
+        if not stripped or stripped.startswith("#"):
             new_lines.append(line)
             continue
 
         # Check if this is a variable assignment
-        if '=' in line:
-            key, _, value = line.partition('=')
+        if "=" in line:
+            key, _, value = line.partition("=")
             key = key.strip()
 
             # If this key is being updated, replace the line
@@ -348,15 +349,15 @@ def update_env_file_preserve_format(path: Path, updates: dict[str, str]) -> None
             new_lines.append(f"{key}={value}")
 
     # Build final content
-    content = '\n'.join(new_lines)
+    content = "\n".join(new_lines)
 
     # Add trailing newline if there's content
-    if content and not content.endswith('\n'):
-        content += '\n'
+    if content and not content.endswith("\n"):
+        content += "\n"
 
     # Write file
     try:
-        path.write_text(content, encoding='utf-8')
+        path.write_text(content, encoding="utf-8")
     except (PermissionError, OSError) as e:
         raise EnvFileError(f"Cannot write file {path}: {e}") from e
 
@@ -382,7 +383,7 @@ def get_venv_path(env_vars: dict[str, str], expand: bool = False) -> str | Path:
         >>> get_venv_path(env, expand=True)
         Path('/home/user/prime-uve/venvs/myproject_a1b2c3d4')
     """
-    venv_path = env_vars.get('UV_PROJECT_ENVIRONMENT')
+    venv_path = env_vars.get("UV_PROJECT_ENVIRONMENT")
 
     if venv_path is None:
         raise EnvFileError("UV_PROJECT_ENVIRONMENT not found in environment variables")

@@ -28,7 +28,7 @@ jobs:
       - name: Load workflow config
         run: |
           if [ -f .github/workflows/config.env ]; then
-            cat .github/workflows/config.env >> $GITHUB_ENV
+            grep -v '^#' .github/workflows/config.env | grep -v '^$' >> $GITHUB_ENV
           fi
 
       - name: Set up Python

@@ -1,9 +1,7 @@
 """Tests for the prune command."""
 
 import json
-import shutil
-from pathlib import Path
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -12,14 +10,7 @@ from prime_uve.cli.prune import (
     format_bytes,
     get_disk_usage,
     is_orphaned,
-    prune_all,
-    prune_command,
-    prune_current,
-    prune_orphan,
-    prune_path,
     remove_venv_directory,
-    scan_venv_directory,
-    find_untracked_venvs,
 )
 from prime_uve.cli.main import cli
 
@@ -135,7 +126,9 @@ class TestHelperFunctions:
         project_path.mkdir()
 
         env_file = project_path / ".env.uve"
-        env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/different_xyz789\n")
+        env_file.write_text(
+            "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/different_xyz789\n"
+        )
 
         cache_entry = {
             "venv_path": "${HOME}/prime-uve/venvs/project_abc123",
@@ -234,7 +227,9 @@ class TestPruneCommand:
 
     @patch("prime_uve.cli.prune.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_command_orphan_json_output(self, mock_cache_class, mock_scan, runner, tmp_path):
+    def test_prune_command_orphan_json_output(
+        self, mock_cache_class, mock_scan, runner, tmp_path
+    ):
         """Test prune --orphan with JSON output."""
         # Setup mock cache
         mock_cache = Mock()
@@ -323,7 +318,9 @@ class TestPruneOrphan:
 
     @patch("prime_uve.cli.prune.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_orphan_no_orphans(self, mock_cache_class, mock_scan, runner, tmp_path):
+    def test_prune_orphan_no_orphans(
+        self, mock_cache_class, mock_scan, runner, tmp_path
+    ):
         """Test prune --orphan with no orphaned venvs."""
         project_path = tmp_path / "project1"
         project_path.mkdir()
@@ -355,7 +352,13 @@ class TestPruneOrphan:
     @patch("prime_uve.cli.prune.expand_path_variables")
     @patch("prime_uve.cli.prune.get_disk_usage")
     def test_prune_orphan_with_orphans(
-        self, mock_disk_usage, mock_expand, mock_cache_class, mock_scan, runner, tmp_path
+        self,
+        mock_disk_usage,
+        mock_expand,
+        mock_cache_class,
+        mock_scan,
+        runner,
+        tmp_path,
     ):
         """Test prune --orphan with orphaned venvs."""
         project_path = tmp_path / "project1"
@@ -405,7 +408,9 @@ class TestPruneCurrent:
 
     @patch("prime_uve.cli.prune.find_project_root")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_current_not_managed(self, mock_cache_class, mock_find_root, runner, tmp_path):
+    def test_prune_current_not_managed(
+        self, mock_cache_class, mock_find_root, runner, tmp_path
+    ):
         """Test prune --current when project not managed."""
         mock_find_root.return_value = tmp_path
         mock_cache = Mock()
@@ -437,7 +442,9 @@ class TestPruneCurrent:
         venv_dir.mkdir()
 
         # Create pyproject.toml so find_env_file works
-        (project_root / "pyproject.toml").write_text("[project]\nname = 'test-project'\n")
+        (project_root / "pyproject.toml").write_text(
+            "[project]\nname = 'test-project'\n"
+        )
         # Create .env.uve file
         env_file = project_root / ".env.uve"
         env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/venv\n")
@@ -455,6 +462,7 @@ class TestPruneCurrent:
 
         # Change to project directory so find_env_file works
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(project_root)
@@ -500,7 +508,9 @@ class TestPrunePath:
     @patch("prime_uve.cli.prune.get_venv_base_dir")
     @patch("prime_uve.cli.prune.get_disk_usage")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_path_success(self, mock_cache_class, mock_disk_usage, mock_get_base, runner, tmp_path):
+    def test_prune_path_success(
+        self, mock_cache_class, mock_disk_usage, mock_get_base, runner, tmp_path
+    ):
         """Test successful path-based prune."""
         venv_base = tmp_path / "prime-uve" / "venvs"
         venv_base.mkdir(parents=True)

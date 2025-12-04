@@ -130,7 +130,11 @@ def expand_path_variables(path: str) -> Path:
     """
     # Determine home directory based on platform
     if sys.platform == "win32":
-        home = os.environ.get("HOME") or os.environ.get("USERPROFILE") or os.path.expanduser("~")
+        home = (
+            os.environ.get("HOME")
+            or os.environ.get("USERPROFILE")
+            or os.path.expanduser("~")
+        )
     else:
         home = os.environ.get("HOME") or os.path.expanduser("~")
 
