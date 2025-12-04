@@ -10,9 +10,17 @@ A thin wrapper for [uv](https://github.com/astral-sh/uv) that provides seamless 
 
 ## Why prime-uve?
 
-**The Problem:** `uv` needs the `UV_PROJECT_ENVIRONMENT` variable to work correctly with external venvs. Managing this manually is tedious and error-prone, especially when working with tools like Claude Code.
+For some project venv location is preferable outside the project root, on the local machine (e.g. if a project is save on a network share, venv should not be there for performance reasons). Tools like `poetry` do manage venv in a cache location, but `uv` does not *easily*: uv can read venv path from the environment variable `UV_PROJECT_ENVIRONMENT`, and the variable needs to be set for every subsequent `uv` call. Managing this manually is tedious and error-prone. 
 
-**The Solution:** `prime-uve` automates loading `.env.uve` for every command and provides tooling to manage venvs in a centralized location outside project roots.
+`uv` by default does not load environment variables from a `.env`, but it can run any command loading environment variables from a `.env` file with the `--env-file <file>` flag. Therefore this syntax is valid:
+
+```bash
+uv run --env-file <.env> -- uv [command]
+```
+
+`prime-uve` automates loading `.env.uve` for every command and provides tooling to manage venvs in a centralized location outside project roots.
+
+As a *side effect* this tool also run `uv` with any environment variables the user decide to set in the `.env.uve` file.
 
 ## Features
 
@@ -37,7 +45,8 @@ uv tool install prime-uve
 
 ```bash
 cd your-project/
-prime-uve init
+uv init # generate the pyproject.toml
+prime-uve init 
 ```
 
 This creates `.env.uve` with:
@@ -59,7 +68,6 @@ The lookup logic for `.env.uve`:
 
 1. Look for `.env.uve` in current directory
 2. If not found and cwd is not project root (no `pyproject.toml`), walk up the tree
-3. If not found at project root, create a default empty one
 
 This ensures commands work correctly from any subdirectory within your project.
 
@@ -78,22 +86,19 @@ Remove venvs from cache:
 - `path/to/venv` - Clean specific venv
 - `--current` - Clean venv mapped to current project
 
-### `prime-uve activate`
+<!-- ### `prime-uve activate`
 Activate current project venv from `.env.uve`
 
 ### `prime-uve configure vscode`
-Update `.code-workspace` file with venv path for VS Code integration
+Update `.code-workspace` file with venv path for VS Code integration -->
 
 ## Path Configuration
 
 Venv paths use environment variables for cross-platform compatibility:
 
 ```bash
-# Unix-like systems
+# path uses $env variables for cross-platform compatibility
 UV_PROJECT_ENVIRONMENT="$HOME/prime-uve/venvs/<project_name>_<hash>"
-
-# Windows
-UV_PROJECT_ENVIRONMENT="%USERPROFILE%/prime-uve/venvs/<project_name>_<hash>"
 ```
 
 The path includes:
@@ -106,34 +111,6 @@ The path includes:
 - `prime-uve init` - Initialize project venv
 - `prime-uve list` - List managed venvs
 - `prime-uve prune` - Clean up orphaned venvs
-
-See [`_todo/`](_todo/) directory for active development tasks.
-
-## Development
-
-This project uses its own tooling for development:
-
-```bash
-# Clone and initialize
-git clone https://github.com/kompre/prime-uve.git
-cd prime-uve
-prime-uve init
-uve sync
-
-# Run tests
-uve run pytest tests/ -v
-
-# Run linter
-uve run ruff check src/ tests/
-```
-
-## Contributing
-
-Contributions welcome! Please:
-1. Check [`_todo/proposal/`](_todo/proposal/) for planned features
-2. Open an issue to discuss major changes
-3. Follow the existing code style (Ruff enforced)
-4. Add tests for new functionality
 
 ## License
 

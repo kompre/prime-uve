@@ -19,7 +19,8 @@
       "Bash(echo:*)",
       "Bash(dir:*)",
       "Bash(gh label create:*)",
-      "Bash(gh pr edit:*)"
+      "Bash(gh pr edit:*)",
+      "Bash(gh run list:*)"
     ],
     "deny": [],
     "ask": []
