@@ -75,7 +75,7 @@ def test_main_finds_env_file(mock_find_env_file, mock_subprocess, mock_is_uv_ava
     # Verify subprocess was called with env file (POSIX format with escaped spaces)
     mock_subprocess.assert_called_once()
     cmd = mock_subprocess.call_args[0][0]
-    expected_path = mock_find_env_file.as_posix().replace(' ', r'\ ')
+    expected_path = mock_find_env_file.as_posix().replace(" ", r"\ ")
     assert expected_path in cmd
 
 
@@ -136,7 +136,7 @@ def test_main_constructs_correct_command(
         main()
 
     cmd = mock_subprocess.call_args[0][0]
-    expected_path = mock_find_env_file.as_posix().replace(' ', r'\ ')
+    expected_path = mock_find_env_file.as_posix().replace(" ", r"\ ")
     expected_prefix = [
         "uv",
         "run",
@@ -364,7 +364,7 @@ def test_main_with_empty_env_file(tmp_path, mock_subprocess, mock_is_uv_availabl
     assert exc_info.value.code == 0
     # Should still pass the env file to uv (POSIX format with escaped spaces)
     cmd = mock_subprocess.call_args[0][0]
-    expected_path = env_file.as_posix().replace(' ', r'\ ')
+    expected_path = env_file.as_posix().replace(" ", r"\ ")
     assert expected_path in cmd
 
 
@@ -428,7 +428,7 @@ def test_main_does_not_expand_env_file_vars(
 
     # uve just passes the path to the file (POSIX format), doesn't read or expand it
     cmd = mock_subprocess.call_args[0][0]
-    expected_path = env_file.as_posix().replace(' ', r'\ ')
+    expected_path = env_file.as_posix().replace(" ", r"\ ")
     assert expected_path in cmd
     # The file content is NOT parsed or expanded by uve
 
@@ -450,7 +450,7 @@ def test_main_with_spaces_in_path(tmp_path, mock_subprocess, mock_is_uv_availabl
 
     # Verify command was constructed with POSIX format and escaped spaces
     cmd = mock_subprocess.call_args[0][0]
-    expected_path = env_file.as_posix().replace(' ', r'\ ')
+    expected_path = env_file.as_posix().replace(" ", r"\ ")
     assert expected_path in cmd
     assert exc_info.value.code == 0
 
