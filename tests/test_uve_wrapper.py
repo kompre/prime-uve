@@ -24,8 +24,8 @@ def mock_env_file(tmp_path):
 
 @pytest.fixture
 def mock_find_env_file(mock_env_file):
-    """Mock find_env_file to return test env file."""
-    with patch("prime_uve.uve.wrapper.find_env_file", return_value=mock_env_file):
+    """Mock find_env_file_strict to return test env file."""
+    with patch("prime_uve.uve.wrapper.find_env_file_strict", return_value=mock_env_file):
         yield mock_env_file
 
 
@@ -256,11 +256,11 @@ def test_main_uv_not_found(mock_find_env_file, mock_subprocess, capsys):
 
 
 def test_main_env_file_not_found_error(capsys, mock_subprocess, mock_is_uv_available):
-    """Error when .env.uve cannot be found/created."""
+    """Error when .env.uve cannot be found."""
     with (
         patch(
-            "prime_uve.uve.wrapper.find_env_file",
-            side_effect=Exception("Permission denied"),
+            "prime_uve.uve.wrapper.find_env_file_strict",
+            side_effect=Exception(".env.uve not found in project"),
         ),
         patch("sys.argv", ["uve", "sync"]),
         pytest.raises(SystemExit) as exc_info,
@@ -269,8 +269,8 @@ def test_main_env_file_not_found_error(capsys, mock_subprocess, mock_is_uv_avail
 
     assert exc_info.value.code == 1
     captured = capsys.readouterr()
-    assert "Error finding .env.uve" in captured.err
-    assert "Permission denied" in captured.err
+    assert "Error:" in captured.err
+    assert ".env.uve not found in project" in captured.err
 
 
 def test_main_subprocess_error(mock_find_env_file, capsys, mock_is_uv_available):
@@ -326,7 +326,7 @@ def test_main_with_empty_env_file(tmp_path, mock_subprocess, mock_is_uv_availabl
     env_file.write_text("")  # Empty file
 
     with (
-        patch("prime_uve.uve.wrapper.find_env_file", return_value=env_file),
+        patch("prime_uve.uve.wrapper.find_env_file_strict", return_value=env_file),
         patch("sys.argv", ["uve", "sync"]),
         pytest.raises(SystemExit) as exc_info,
     ):
@@ -344,7 +344,7 @@ def test_main_with_comments_only(tmp_path, mock_subprocess, mock_is_uv_available
     env_file.write_text("# This is a comment\n# Another comment\n")
 
     with (
-        patch("prime_uve.uve.wrapper.find_env_file", return_value=env_file),
+        patch("prime_uve.uve.wrapper.find_env_file_strict", return_value=env_file),
         patch("sys.argv", ["uve", "sync"]),
         pytest.raises(SystemExit) as exc_info,
     ):
@@ -388,7 +388,7 @@ def test_main_does_not_expand_env_file_vars(
     env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_12345678\n")
 
     with (
-        patch("prime_uve.uve.wrapper.find_env_file", return_value=env_file),
+        patch("prime_uve.uve.wrapper.find_env_file_strict", return_value=env_file),
         patch("sys.argv", ["uve", "sync"]),
         pytest.raises(SystemExit),
     ):
