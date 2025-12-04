@@ -64,6 +64,61 @@ def format_bytes(size: int) -> str:
         return f"{size_float:.1f} {units[unit_index]}"
 
 
+def scan_venv_directory() -> list[Path]:
+    """
+    Scan venv base directory for all venv directories.
+
+    Returns:
+        List of venv directory paths
+    """
+    venv_base = get_venv_base_dir()
+    if not venv_base.exists():
+        return []
+
+    try:
+        return [d for d in venv_base.iterdir() if d.is_dir()]
+    except (OSError, PermissionError):
+        return []
+
+
+def find_untracked_venvs(cache_entries: dict) -> list[dict]:
+    """
+    Find venvs on disk that aren't in cache (treat as orphans).
+
+    Args:
+        cache_entries: Dictionary of cache entries (project_path -> entry)
+
+    Returns:
+        List of untracked venv dictionaries
+    """
+    all_venvs = scan_venv_directory()
+    tracked_venvs = set()
+
+    # Build set of tracked venv paths
+    for cache_entry in cache_entries.values():
+        venv_path_expanded = expand_path_variables(cache_entry["venv_path"])
+        tracked_venvs.add(venv_path_expanded)
+
+    # Find untracked venvs
+    untracked = []
+    for venv_dir in all_venvs:
+        if venv_dir not in tracked_venvs:
+            # Extract project name from directory name (e.g., "test-project_abc123" -> "test-project")
+            dir_name = venv_dir.name
+            project_name = dir_name.rsplit("_", 1)[0] if "_" in dir_name else dir_name
+
+            untracked.append(
+                {
+                    "project_name": f"<unknown: {project_name}>",
+                    "venv_path": None,  # No variable form for untracked
+                    "venv_path_expanded": venv_dir,
+                    "size": get_disk_usage(venv_dir),
+                }
+            )
+
+    return untracked
+
+
 def is_orphaned(project_path: str, cache_entry: dict) -> bool:
     """
     Check if a cached venv is orphaned.
@@ -100,14 +155,18 @@ def remove_venv_directory(venv_path: str, dry_run: bool) -> tuple[bool, Optional
     Remove a venv directory.
 
     Args:
-        venv_path: Venv path (may contain variables like ${HOME})
+        venv_path: Venv path (may contain variables like ${HOME} or be a direct path)
         dry_run: If True, don't actually delete
 
     Returns:
         Tuple of (success, error_message)
     """
     try:
-        venv_path_expanded = expand_path_variables(venv_path)
+        # If path contains ${HOME}, expand it; otherwise treat as literal path
+        if "${HOME}" in str(venv_path):
+            venv_path_expanded = expand_path_variables(venv_path)
+        else:
+            venv_path_expanded = Path(venv_path)
 
         if not venv_path_expanded.exists():
             return True, None  # Already gone
@@ -267,7 +326,7 @@ def prune_orphan(
     json_output: bool,
 ) -> None:
     """
-    Remove only orphaned venv directories.
+    Remove only orphaned venv directories, including untracked venvs.
 
     Args:
         ctx: Click context
@@ -284,14 +343,7 @@ def prune_orphan(
         error(f"Failed to load cache: {e}")
         sys.exit(1)
 
-    if not mappings:
-        if json_output:
-            print_json({"removed": [], "failed": [], "total_size_freed": 0})
-        else:
-            info("No managed venvs found.")
-        return
-
-    # Find orphaned venvs
+    # Find cached orphaned venvs
     orphaned_venvs = []
     total_size = 0
 
@@ -310,8 +362,24 @@ def prune_orphan(
                     "venv_path": venv_path,
                     "venv_path_expanded": str(venv_path_expanded),
                     "size": size,
+                    "is_tracked": True,  # Mark as from cache
                 }
             )
+
+    # Find untracked venvs (also treat as orphans)
+    untracked_venvs = find_untracked_venvs(mappings)
+    for untracked in untracked_venvs:
+        total_size += untracked["size"]
+        orphaned_venvs.append(
+            {
+                "project_name": untracked["project_name"],
+                "project_path": None,  # No associated project
+                "venv_path": None,  # No cache entry
+                "venv_path_expanded": str(untracked["venv_path_expanded"]),
+                "size": untracked["size"],
+                "is_tracked": False,  # Mark as untracked
+            }
+        )
 
     if not orphaned_venvs:
         if json_output:
@@ -345,12 +413,17 @@ def prune_orphan(
     failed = []
 
     for item in orphaned_venvs:
-        success_flag, error_msg = remove_venv_directory(item["venv_path"], dry_run)
+        venv_path_to_remove = item.get("venv_path") if item["is_tracked"] else None
+        if not venv_path_to_remove:
+            # For untracked venvs, construct the path directly
+            venv_path_to_remove = item["venv_path_expanded"]
+
+        success_flag, error_msg = remove_venv_directory(venv_path_to_remove, dry_run)
 
         if success_flag:
             removed.append(item)
-            if not dry_run:
-                # Remove from cache
+            if not dry_run and item["is_tracked"]:
+                # Remove from cache only for tracked venvs
                 try:
                     cache.remove_mapping(Path(item["project_path"]))
                 except Exception as e:
@@ -371,8 +444,8 @@ def prune_orphan(
                 "removed": [
                     {
                         "project_name": item["project_name"],
-                        "project_path": item["project_path"],
-                        "venv_path": item["venv_path"],
+                        "project_path": item.get("project_path"),
+                        "venv_path": item.get("venv_path"),
                         "size_bytes": item["size"],
                     }
                     for item in removed
@@ -380,8 +453,8 @@ def prune_orphan(
                 "failed": [
                     {
                         "project_name": item["venv"]["project_name"],
-                        "project_path": item["venv"]["project_path"],
-                        "venv_path": item["venv"]["venv_path"],
+                        "project_path": item["venv"].get("project_path"),
+                        "venv_path": item["venv"].get("venv_path"),
                         "error": item["error"],
                     }
                     for item in failed
