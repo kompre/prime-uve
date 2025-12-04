@@ -12,12 +12,6 @@ dependencies = [
     "click>=8.0.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-]
-
 [project.scripts]
 prime-uve = "prime_uve.cli.main:main"
 uve = "prime_uve.uve.wrapper:main"
@@ -25,3 +19,10 @@ uve = "prime_uve.uve.wrapper:main"
 [build-system]
 requires = ["uv_build>=0.9.9,<0.10.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.7",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
