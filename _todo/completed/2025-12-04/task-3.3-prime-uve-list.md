@@ -629,3 +629,104 @@ This task enables:
 **Medium** - Straightforward logic with good infrastructure support.
 
 Estimated effort: 3-4 hours including tests and documentation.
+## Task 3.3: Implement prime-uve list - COMPLETED
+
+**Completion Date:** 2025-12-04
+
+**Summary:**
+Successfully implemented the \ command with simplified binary validation logic.
+
+**Key Features Delivered:**
+- Binary validation: Valid (cache matches .env.uve) or Orphan (doesn't match)
+- Table output with reordered columns: PROJECT | STATUS | VENV PATH
+- Full venv paths displayed (clickable in terminals)
+- JSON output format for machine-readable data
+- \ filter to show only orphaned venvs
+- \ mode with disk usage calculation and extended details
+- ASCII-safe symbols ([OK]/[\!]) for Windows terminal compatibility
+- Helper functions: format_bytes(), truncate_path(), get_disk_usage()
+
+**Validation Approach:**
+- Single check: Does cached venv_path match UV_PROJECT_ENVIRONMENT in .env.uve?
+- .env.uve is the source of truth, cache is just an index
+- No complex multi-condition validation needed
+
+**Testing:**
+- 23 unit tests created (100% pass rate)
+- Validation logic tests (valid, orphan mismatch, missing env, permission errors)
+- Helper function tests (byte formatting, path truncation, disk usage)
+- CLI integration tests (empty cache, single/multiple projects, filters, formats)
+- All 255 project tests passing
+
+**Files Modified:**
+- Created: src/prime_uve/cli/list.py
+- Created: tests/test_cli/test_list.py
+- Modified: src/prime_uve/cli/main.py (wired up list command with --orphan-only option)
+- Modified: tests/test_cli/test_main.py (updated for implemented command)
+
+**Manual Testing Verified:**
+- Empty cache shows helpful message with guidance
+- List displays valid projects with full clickable paths
+- JSON output works correctly
+- Verbose mode shows extended information and disk usage
+- Windows compatibility confirmed with ASCII symbols
+- Column reordering makes paths clickable in terminals
+
+**Next Steps:**
+Ready for Task 3.4: Implement \ command
+
+
+---
+
+# COMPLETION SUMMARY
+
+**Completion Date:** 2025-12-04
+
+## Status: ✅ COMPLETED
+
+All objectives met. The `prime-uve list` command is fully implemented, tested, and verified.
+
+## Implementation Delivered
+
+- **Simplified validation logic:** Binary check (Valid/Orphan) based on cache vs .env.uve comparison
+- **Table output:** Reordered columns (PROJECT | STATUS | VENV PATH) with full clickable paths
+- **JSON output:** Machine-readable format for scripting
+- **Filter option:** `--orphan-only` to show only problematic venvs
+- **Verbose mode:** Extended details with disk usage calculation
+- **Windows compatibility:** ASCII-safe symbols ([OK]/[!]) instead of Unicode
+- **Helper utilities:** format_bytes(), truncate_path(), get_disk_usage()
+
+## Test Coverage
+
+- **23 unit tests** covering all functionality (100% pass rate)
+- **All 255 project tests** passing
+- Manual testing verified on Windows
+
+## Files Changed
+
+- Created: `src/prime_uve/cli/list.py` (330 lines)
+- Created: `tests/test_cli/test_list.py` (487 lines, 23 tests)
+- Modified: `src/prime_uve/cli/main.py`
+- Modified: `tests/test_cli/test_main.py`
+
+## Key Design Decision
+
+Validation is intentionally simple - `.env.uve` is the source of truth:
+- If cache matches .env.uve → Valid
+- If cache doesn't match (for ANY reason) → Orphan
+
+This eliminates complex multi-condition validation and makes the logic easy to understand and maintain.
+
+## Example Output
+
+```
+PROJECT              STATUS          VENV PATH
+--------------------------------------------------------------------------------
+prime-uve            [OK] Valid      C:\Users\...\venvs\prime-uve_043331fa
+
+Summary: 1 total, 1 valid, 0 orphaned
+```
+
+## Next Task
+
+Ready to proceed with Task 3.4: Implement `prime-uve prune` command
