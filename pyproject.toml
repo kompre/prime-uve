@@ -3,15 +3,36 @@ name = "prime-uve"
 version = "0.1.0rc1"
 description = "A thin wrapper for uv with external venv management"
 readme = "README.md"
+license = { text = "MIT" }
 authors = [
     { name = "kompre", email = "s.follador@gmail.com" }
 ]
+maintainers = [
+    { name = "kompre", email = "s.follador@gmail.com" }
+]
 requires-python = ">=3.13"
+keywords = ["uv", "venv", "environment", "python", "package-manager", "wrapper"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Installation/Setup",
+    "Operating System :: OS Independent",
+]
 dependencies = [
     "filelock>=3.20.0",
     "click>=8.0.0",
     "ruff>=0.14.7",
 ]
+
+[project.urls]
+Homepage = "https://github.com/kompre/prime-uve"
+Repository = "https://github.com/kompre/prime-uve"
+Issues = "https://github.com/kompre/prime-uve/issues"
+Changelog = "https://github.com/kompre/prime-uve/releases"
 
 [project.scripts]
 prime-uve = "prime_uve.cli.main:main"
