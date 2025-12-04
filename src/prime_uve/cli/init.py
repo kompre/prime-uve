@@ -50,16 +50,22 @@ def init_command(
     project_name = metadata.name or project_root.name
 
     # 3. Check if already initialized
+    # Only block if UV_PROJECT_ENVIRONMENT is already set
     env_file = project_root / ".env.uve"
     if env_file.exists() and not force:
         existing_vars = read_env_file(env_file)
-        existing_venv = existing_vars.get("UV_PROJECT_ENVIRONMENT", "(not set)")
-        raise ValueError(
-            f"Project already initialized\n"
-            f"Found existing .env.uve at {env_file}\n\n"
-            f"Current venv: {existing_venv}\n\n"
-            f"To reinitialize: Run 'prime-uve init --force'"
-        )
+        existing_venv = existing_vars.get("UV_PROJECT_ENVIRONMENT")
+
+        if existing_venv:
+            # Already initialized - UV_PROJECT_ENVIRONMENT is set
+            raise ValueError(
+                f"Project already initialized\n"
+                f"UV_PROJECT_ENVIRONMENT is already set in .env.uve\n\n"
+                f"Current venv: {existing_venv}\n\n"
+                f"To reinitialize: Run 'prime-uve init --force'\n"
+                f"Note: --force will only update UV_PROJECT_ENVIRONMENT, other variables will be preserved"
+            )
+        # If .env.uve exists but UV_PROJECT_ENVIRONMENT is not set, we can initialize
 
     # 4. Confirm force if overwriting
     if force and env_file.exists():
@@ -68,11 +74,14 @@ def init_command(
         new_venv = generate_venv_path(project_root)
 
         if old_venv != new_venv and not yes:
+            other_vars_count = len([k for k in existing_vars.keys() if k != "UV_PROJECT_ENVIRONMENT"])
+            preservation_note = f"\n  {other_vars_count} other variable(s) will be preserved" if other_vars_count > 0 else ""
+
             if not confirm(
                 f"⚠ Warning: Forcing reinitialization\n"
-                f"  This will overwrite UV_PROJECT_ENVIRONMENT in .env.uve\n"
+                f"  This will update UV_PROJECT_ENVIRONMENT in .env.uve\n"
                 f"  Old venv: {old_venv}\n"
-                f"  New venv: {new_venv}\n\n"
+                f"  New venv: {new_venv}{preservation_note}\n\n"
                 f"Continue?",
                 default=False,
                 yes_flag=yes,
