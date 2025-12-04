@@ -8,6 +8,7 @@ import pytest
 from prime_uve.core.env_file import (
     EnvFileError,
     find_env_file,
+    find_env_file_strict,
     get_venv_path,
     read_env_file,
     update_env_file,
@@ -96,6 +97,88 @@ def test_find_env_file_defaults_to_cwd(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     result = find_env_file()
     assert result == tmp_path / ".env.uve"
+
+
+# ============================================================================
+# Strict Lookup Tests
+# ============================================================================
+
+
+def test_find_env_file_strict_in_current_dir(tmp_path):
+    """Finds .env.uve in current directory (strict mode)."""
+    env_file = tmp_path / ".env.uve"
+    env_file.touch()
+
+    result = find_env_file_strict(tmp_path)
+    assert result == env_file
+
+
+def test_find_env_file_strict_walk_up_to_root(tmp_path):
+    """Walks up directory tree to project root (strict mode)."""
+    # Create project structure
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "pyproject.toml").touch()
+    (project_root / ".env.uve").touch()
+
+    subdir = project_root / "src" / "mypackage"
+    subdir.mkdir(parents=True)
+
+    result = find_env_file_strict(subdir)
+    assert result == project_root / ".env.uve"
+
+
+def test_find_env_file_strict_error_at_project_root(tmp_path):
+    """Raises error if .env.uve not found at project root (strict mode)."""
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "pyproject.toml").touch()
+
+    subdir = project_root / "src"
+    subdir.mkdir()
+
+    with pytest.raises(EnvFileError, match=".env.uve not found in project"):
+        find_env_file_strict(subdir)
+
+
+def test_find_env_file_strict_error_no_project(tmp_path):
+    """Raises error if no .env.uve and no project root (strict mode)."""
+    some_dir = tmp_path / "some_dir"
+    some_dir.mkdir()
+
+    with pytest.raises(EnvFileError, match=".env.uve not found starting from"):
+        find_env_file_strict(some_dir)
+
+
+def test_find_env_file_strict_prefers_closest(tmp_path):
+    """Prefers .env.uve in closer directory (strict mode)."""
+    # Create nested structure with multiple .env.uve files
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "pyproject.toml").touch()
+    (project_root / ".env.uve").write_text("ROOT=true\n")
+
+    subdir = project_root / "subdir"
+    subdir.mkdir()
+    (subdir / ".env.uve").write_text("SUBDIR=true\n")
+
+    # Should find the one in subdir, not root
+    result = find_env_file_strict(subdir)
+    assert result == subdir / ".env.uve"
+
+    # Verify it's the right file
+    env_vars = read_env_file(result)
+    assert "SUBDIR" in env_vars
+
+
+def test_find_env_file_strict_defaults_to_cwd(tmp_path, monkeypatch):
+    """Defaults to current working directory (strict mode)."""
+    env_file = tmp_path / ".env.uve"
+    env_file.touch()
+
+    monkeypatch.chdir(tmp_path)
+    result = find_env_file_strict()
+    assert result == env_file
 
 
 # ============================================================================

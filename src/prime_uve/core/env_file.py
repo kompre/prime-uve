@@ -82,6 +82,71 @@ def find_env_file(start_path: Path | None = None) -> Path:
     return env_file
 
 
+def find_env_file_strict(start_path: Path | None = None) -> Path:
+    """Find .env.uve file without creating it if missing.
+
+    Search algorithm:
+    1. Check current directory for .env.uve
+    2. If not found, walk up directory tree to project root (pyproject.toml)
+    3. If not found at project root, raise EnvFileError
+
+    Args:
+        start_path: Starting directory. Defaults to Path.cwd()
+
+    Returns:
+        Path to existing .env.uve file
+
+    Raises:
+        EnvFileError: If .env.uve is not found
+
+    Example:
+        >>> env_file = find_env_file_strict()
+        >>> print(env_file)
+        /home/user/projects/myproject/.env.uve
+    """
+    if start_path is None:
+        start_path = Path.cwd()
+    else:
+        start_path = Path(start_path)
+
+    start_path = start_path.resolve()
+
+    # Search for .env.uve starting from current path
+    current = start_path
+    project_root = None
+
+    # Walk up directory tree to find .env.uve or project root
+    while True:
+        # Check if .env.uve exists in current directory
+        env_file = current / ".env.uve"
+        if env_file.exists():
+            return env_file
+
+        # Check if this is the project root (has pyproject.toml)
+        if (current / "pyproject.toml").exists():
+            project_root = current
+
+        # Check if we've reached the filesystem root
+        parent = current.parent
+        if parent == current:
+            # At filesystem root
+            break
+
+        current = parent
+
+    # No .env.uve found - raise error
+    if project_root:
+        raise EnvFileError(
+            f".env.uve not found in project at {project_root}\n"
+            f"Run 'prime-uve init' to create one, or create it manually."
+        )
+    else:
+        raise EnvFileError(
+            f".env.uve not found starting from {start_path}\n"
+            f"Run 'prime-uve init' to create one, or create it manually."
+        )
+
+
 def read_env_file(path: Path) -> dict[str, str]:
     """Read .env.uve file and parse variables WITHOUT expanding them.
 

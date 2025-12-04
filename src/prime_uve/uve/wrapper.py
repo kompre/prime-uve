@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 
-from prime_uve.core.env_file import find_env_file
+from prime_uve.core.env_file import find_env_file_strict
 
 
 def is_uv_available() -> bool:
@@ -38,11 +38,11 @@ def main() -> None:
         130: KeyboardInterrupt (Ctrl+C)
         Other: Forwarded from uv subprocess
     """
-    # 1. Find .env.uve file
+    # 1. Find .env.uve file (strict mode - don't create if missing)
     try:
-        env_file = find_env_file()
+        env_file = find_env_file_strict()
     except Exception as e:
-        print(f"Error finding .env.uve: {e}", file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
     # 2. Ensure HOME is set on Windows for cross-platform compatibility
