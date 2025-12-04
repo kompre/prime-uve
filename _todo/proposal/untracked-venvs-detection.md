@@ -1,8 +1,8 @@
-# Task Proposal: Detect and Report Untracked Venvs
+# Task Proposal: Include Untracked Venvs as Orphans
 
 ## Problem Statement
 
-Currently, `prime-uve list` only shows venvs that are tracked in the cache (`~/.prime-uve/cache.json`). However, there may be venv directories in the storage location (`~/prime-uve/venvs/`) that are not tracked in the cache. These untracked venvs are invisible to the system and cannot be cleaned up with `prime-uve prune --orphan`.
+Currently, `prime-uve list` only shows venvs that are tracked in the cache (`~/.prime-uve/cache.json`). However, there may be venv directories in the storage location (`~/prime-uve/venvs/`) that are not tracked in the cache. These venvs are invisible to the system and cannot be cleaned up with `prime-uve prune --orphan`.
 
 **Current Behavior**:
 ```bash
@@ -26,19 +26,19 @@ This situation can occur when:
 
 ## Proposed Solution
 
-Enhance `prime-uve list` and `prime-uve prune` to detect and report untracked venvs.
+**Treat untracked venvs as orphans** - they're not linked to any project we know about, so they're orphaned by definition.
 
-### Option A: Enhanced List Command (Recommended)
+Enhance `prime-uve list` and `prime-uve prune --orphan` to:
+1. Scan the filesystem for all venvs
+2. Include venvs not in cache as orphans
+3. Clean them up with existing `prune --orphan` command
 
-Add a new validation category to `prime-uve list`:
-- **Valid**: Cache matches .env.uve (current)
-- **Orphan**: Cache doesn't match .env.uve (current)
-- **Untracked**: Venv exists on disk but not in cache (NEW)
+### Simplified Categories
 
-**Implementation**:
-1. Scan `~/prime-uve/venvs/` directory
-2. Compare against cache entries
-3. Report venvs that exist on disk but not in cache
+- **Valid**: Cache matches .env.uve
+- **Orphan**: Cache doesn't match .env.uve OR not in cache at all
+
+No new status needed - untracked venvs are just another type of orphan.
 
 **Output Example**:
 ```bash
@@ -49,39 +49,25 @@ Managed Virtual Environments
 PROJECT              STATUS          VENV PATH
 --------------------------------------------------------------------------------
 prime-uve            [!] Orphan      ~/prime-uve/venvs/prime-uve_043331fa
-<unknown>            [?] Untracked   ~/prime-uve/venvs/test-project_0e688aca
-<unknown>            [?] Untracked   ~/prime-uve/venvs/test-project_15fb9ebc
+<unknown>            [!] Orphan      ~/prime-uve/venvs/test-project_0e688aca
+<unknown>            [!] Orphan      ~/prime-uve/venvs/test-project_15fb9ebc
 ...
 
-Summary: 1 tracked (0 valid, 1 orphaned), 57 untracked
+Summary: 58 total, 0 valid, 58 orphaned
 Total disk usage: 2.5 GB
 
-Note: Untracked venvs are not managed by prime-uve.
-Run 'prime-uve prune --untracked' to clean them up.
+Found 58 orphaned venv(s). Run 'prime-uve prune --orphan' to clean up.
 ```
 
-### Option B: Separate Command
+### Rationale
 
-Create a new command `prime-uve scan` to detect untracked venvs:
-```bash
-$ prime-uve scan
-Found 57 untracked venv(s) in ~/prime-uve/venvs/
-Total disk usage: 2.4 GB
+A venv that's not tracked in the cache is orphaned because:
+- We don't know which project it belongs to
+- We can't validate it against any .env.uve
+- It's taking up disk space with no way to manage it
+- It should be cleaned up
 
-Run 'prime-uve prune --untracked' to clean them up.
-```
-
-**Pros**:
-- Doesn't clutter `list` output
-- Focused tool for maintenance
-
-**Cons**:
-- Extra command to learn
-- User needs to know to run it
-
-## Recommended Approach: Option A (Enhanced List)
-
-Enhance existing commands rather than adding new ones.
+This is simpler than creating a new "untracked" category.
 
 ### Implementation Plan
 
@@ -97,7 +83,7 @@ def scan_venv_directory() -> list[Path]:
     return [d for d in venv_base.iterdir() if d.is_dir()]
 
 def find_untracked_venvs(cache_entries: dict) -> list[dict]:
-    """Find venvs on disk that aren't in cache."""
+    """Find venvs on disk that aren't in cache (treat as orphans)."""
     all_venvs = scan_venv_directory()
     tracked_venvs = set()
 
@@ -108,87 +94,85 @@ def find_untracked_venvs(cache_entries: dict) -> list[dict]:
     untracked = []
     for venv_dir in all_venvs:
         if venv_dir not in tracked_venvs:
+            # Extract project name from directory name (e.g., "test-project_abc123" -> "test-project")
+            dir_name = venv_dir.name
+            project_name = dir_name.rsplit('_', 1)[0] if '_' in dir_name else dir_name
+
             untracked.append({
+                "project_name": f"<unknown: {project_name}>",
                 "venv_path_expanded": venv_dir,
                 "disk_usage_bytes": get_disk_usage(venv_dir),
+                "is_valid": False,  # Treat as orphan
             })
 
     return untracked
 ```
 
 **Output Changes**:
-- Add new status symbol: `[?] Untracked`
-- Show untracked venvs after tracked ones
-- Update summary to include untracked count
-- Add helpful message about `prune --untracked`
+- Include untracked venvs in results with `[!] Orphan` status
+- Show project name as `<unknown: project-name>` for untracked venvs
+- Count them in orphan total
+- `--orphan-only` now includes untracked venvs (they're orphans)
 
-**Options**:
-- `--untracked-only`: Show only untracked venvs
-- Existing `--orphan-only` still works (shows only cached orphans)
-
-#### 2. Update `prime-uve prune`
-
-Add new mode: `prime-uve prune --untracked`
+#### 2. Update `prime-uve prune --orphan`
 
 **Changes to `prune.py`**:
-```python
-def prune_untracked(ctx, verbose, yes, dry_run, json_output):
-    """Remove untracked venv directories."""
-    # 1. Load cache to know what's tracked
-    cache = Cache()
-    tracked_venvs = get_tracked_venv_paths(cache)
 
-    # 2. Scan disk for all venvs
+No new mode needed! Just enhance `prune_orphan()` to include untracked venvs:
+
+```python
+def prune_orphan(ctx, verbose, yes, dry_run, json_output):
+    """Remove orphaned venv directories (including untracked)."""
+    # 1. Load cache
+    cache = Cache()
+    mappings = cache.list_all()
+
+    # 2. Find cached orphans (current logic)
+    orphaned_venvs = []
+    for project_path, cache_entry in mappings.items():
+        if is_orphaned(project_path, cache_entry):
+            orphaned_venvs.append(...)
+
+    # 3. Find untracked venvs (NEW)
+    tracked_venvs = {expand_path_variables(e["venv_path"])
+                     for e in mappings.values()}
     all_venvs = scan_venv_directory()
 
-    # 3. Find untracked ones
-    untracked = [v for v in all_venvs if v not in tracked_venvs]
+    for venv_dir in all_venvs:
+        if venv_dir not in tracked_venvs:
+            # This is an untracked venv - treat as orphan
+            orphaned_venvs.append({
+                "project_name": f"<unknown: {venv_dir.name}>",
+                "venv_path": str(venv_dir),  # No variable form
+                "venv_path_expanded": str(venv_dir),
+                "size": get_disk_usage(venv_dir),
+            })
 
-    # 4. Show and confirm
-    # 5. Delete (with --dry-run support)
-    # 6. Do NOT update cache (they're not in it)
+    # 4. Remove all orphans (cached + untracked)
+    # ... existing removal logic
 ```
 
-**Command Usage**:
-```bash
-# Remove all untracked venvs
-prime-uve prune --untracked --yes
-
-# Preview what would be removed
-prime-uve prune --untracked --dry-run
-
-# Remove ALL venvs (tracked + untracked)
-prime-uve prune --all  # Already removes everything in the directory
-```
-
-**Note**: `prune --all` already removes everything in `~/prime-uve/venvs/`, so it handles untracked venvs. But `--untracked` is more surgical.
-
-#### 3. Update Validation Logic
-
-Current validation only checks cached entries. We need to also check disk:
-
-```python
-class VenvStatus:
-    """Status of a venv."""
-    VALID = "valid"           # In cache, matches .env.uve
-    ORPHAN = "orphan"         # In cache, doesn't match .env.uve
-    UNTRACKED = "untracked"   # On disk, not in cache
-```
+**Benefits**:
+- No new command to learn
+- `prune --orphan` now cleans up everything that's orphaned
+- Simpler mental model: orphan = not connected to a valid project
 
 ## Acceptance Criteria
 
-- [ ] `prime-uve list` shows untracked venvs with `[?] Untracked` status
-- [ ] `prime-uve list --untracked-only` filters to show only untracked venvs
-- [ ] Summary includes untracked count: "1 tracked (0 valid, 1 orphaned), 57 untracked"
-- [ ] `prime-uve prune --untracked` removes only untracked venvs
-- [ ] `prime-uve prune --all` still removes everything (tracked + untracked)
-- [ ] Dry-run works for `--untracked` mode
-- [ ] JSON output includes untracked venvs with proper status
-- [ ] Verbose mode shows which venvs are untracked
+- [ ] `prime-uve list` shows untracked venvs with `[!] Orphan` status
+- [ ] Untracked venvs show project name as `<unknown: project-name>`
+- [ ] Summary includes untracked venvs in orphan count
+- [ ] `prime-uve prune --orphan` removes both cached orphans AND untracked venvs
+- [ ] `prime-uve prune --all` still removes everything (no change)
+- [ ] `--orphan-only` filter includes untracked venvs
+- [ ] Dry-run works correctly with untracked venvs
+- [ ] JSON output includes untracked venvs as orphans
+- [ ] Verbose mode shows all venvs being removed
 - [ ] Disk usage is calculated and displayed for untracked venvs
 - [ ] No false positives (venvs correctly identified as tracked vs untracked)
 - [ ] Performance is acceptable with 100+ venvs on disk
 - [ ] Comprehensive test coverage for new functionality
+- [ ] No cache corruption (untracked venvs don't get added to cache)
 
 ## Test Cases
 
@@ -210,13 +194,17 @@ def test_find_untracked_venvs_all():
     """Test when all venvs are untracked."""
     # Empty cache, venvs on disk
 
-def test_prune_untracked():
-    """Test prune --untracked mode."""
-    # Create untracked venvs, prune them
+def test_list_includes_untracked_as_orphans():
+    """Test list shows untracked venvs as orphans."""
+    # Create untracked venvs, verify they appear with orphan status
 
-def test_list_untracked_only_filter():
-    """Test --untracked-only filter."""
-    # Mix of statuses, filter shows only untracked
+def test_prune_orphan_includes_untracked():
+    """Test prune --orphan removes untracked venvs."""
+    # Create untracked venvs, prune with --orphan, verify removed
+
+def test_untracked_venv_project_name_extraction():
+    """Test extracting project name from venv directory."""
+    # "test-project_abc123" -> "<unknown: test-project>"
 ```
 
 ### Integration Tests
@@ -224,22 +212,22 @@ def test_list_untracked_only_filter():
 def test_untracked_workflow():
     """Test full workflow: create untracked, list, prune."""
     # 1. Create venv manually in storage dir
-    # 2. Verify list shows it as untracked
-    # 3. Prune it
+    # 2. Verify list shows it as orphan
+    # 3. Prune with --orphan
     # 4. Verify it's gone
 ```
 
 ## Files to Modify
 
-- `src/prime_uve/cli/list.py` - Add untracked detection and display
-- `src/prime_uve/cli/prune.py` - Add `--untracked` mode
+- `src/prime_uve/cli/list.py` - Add filesystem scanning and include untracked as orphans
+- `src/prime_uve/cli/prune.py` - Enhance `--orphan` mode to include untracked
 - `tests/test_cli/test_list.py` - Add untracked tests
 - `tests/test_cli/test_prune.py` - Add untracked prune tests
 - `_todo/pending/architecture-design.md` - Document this enhancement
 
 ## Alternative: Import Untracked Venvs
 
-Instead of just deleting untracked venvs, could we try to "import" them back into the cache?
+Instead of just treating untracked venvs as orphans, could we try to "import" them back into the cache?
 
 **Challenges**:
 1. Can't determine original project path from venv directory alone
@@ -247,38 +235,22 @@ Instead of just deleting untracked venvs, could we try to "import" them back int
 3. Would need to scan entire filesystem to find matching projects
 4. May match wrong project if multiple projects have same name
 
-**Verdict**: Too complex and unreliable. Better to just clean them up.
+**Verdict**: Too complex and unreliable. Better to treat them as orphans and let user clean them up.
 
 ## Migration Path
 
 For users with existing untracked venvs:
 
-1. **Awareness**: First time running `list` after upgrade, show message:
+1. **Automatic discovery**: After upgrade, `list` will automatically show them as orphans
    ```
-   [i] Found 57 untracked venvs (2.4 GB) not managed by prime-uve.
-   [i] Run 'prime-uve list --untracked-only' to see them.
-   [i] Run 'prime-uve prune --untracked' to clean them up.
+   Summary: 58 total, 0 valid, 58 orphaned
    ```
 
-2. **Gradual cleanup**: Users can review with `--untracked-only` before pruning
+2. **Gradual cleanup**: Users can review with `list` before pruning
 
-3. **Safe default**: `prune --orphan` still only touches cached orphans (safer)
-
-## Questions for User
-
-1. **Should `list` always show untracked venvs, or hide them by default?**
-   - Option A: Always show (more visibility, but noisier)
-   - Option B: Hide by default, show with `--show-untracked` flag
-   - **Recommendation**: Always show, with helpful message
-
-2. **Should `prune --all` behavior change?**
-   - Current: Removes everything in `~/prime-uve/venvs/` directory
-   - Proposed: No change (still removes everything)
-   - **Recommendation**: Keep current behavior
-
-3. **Should we try to prevent untracked venvs from being created?**
-   - Could add validation in init to check if venv dir already exists
-   - **Recommendation**: Not needed, prune handles cleanup
+3. **Behavior change**: `prune --orphan` now removes more (includes untracked)
+   - This is the correct behavior - orphans should include untracked
+   - Users who want to keep untracked venvs can skip using `--orphan`
 
 ## Priority
 
@@ -303,8 +275,9 @@ Similar complexity to implementing a new prune mode (task 3.4 level).
 
 ## Benefits
 
-1. **Visibility**: Users can see all venvs consuming space
-2. **Cleanup**: Can remove untracked venvs safely
+1. **Visibility**: Users can see all venvs consuming space, not just cached ones
+2. **Cleanup**: `prune --orphan` now handles all orphaned venvs (cached + untracked)
 3. **Debugging**: Helps diagnose cache sync issues
 4. **Disk management**: Better control over disk usage
 5. **Trust**: System shows everything, not just cached items
+6. **Simplicity**: No new status category or command - just better orphan detection
