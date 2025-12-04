@@ -6,7 +6,7 @@ from typing import Optional
 
 import click
 
-from prime_uve.cli.output import error, info, success, warning
+from prime_uve.cli.output import error, info
 from prime_uve.cli.decorators import common_options, handle_errors
 
 

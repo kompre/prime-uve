@@ -8,7 +8,6 @@ import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 from prime_uve.core.env_file import find_env_file
 

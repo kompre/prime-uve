@@ -1,14 +1,11 @@
 """Initialize project with external venv management."""
 
-from pathlib import Path
-from typing import Any
 
 import click
 
 from prime_uve.cli.output import confirm, echo, info, success
 from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import (
-    find_env_file,
     read_env_file,
     update_env_file_preserve_format,
 )
@@ -124,7 +121,6 @@ def init_command(
     # 9. Output results
     if json_output:
         import json
-        import sys
 
         result = {
             "status": "success",

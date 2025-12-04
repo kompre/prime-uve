@@ -1,7 +1,6 @@
 """Output formatting utilities for CLI."""
 
 import json as json_module
-import sys
 from typing import Any, Dict
 
 import click

@@ -1,10 +1,7 @@
 """Tests for CLI output utilities."""
 
 import json
-from io import StringIO
-from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 
 from prime_uve.cli.output import (

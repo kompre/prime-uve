@@ -1,8 +1,6 @@
 """Tests for update_env_file_preserve_format function."""
 
-from pathlib import Path
 
-import pytest
 
 from prime_uve.core.env_file import update_env_file_preserve_format
 
