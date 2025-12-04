@@ -10,7 +10,7 @@ import click
 from prime_uve.cli.output import echo, error, info, print_json
 from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import read_env_file
-from prime_uve.core.paths import expand_path_variables
+from prime_uve.core.paths import expand_path_variables, get_venv_base_dir
 
 
 @dataclass
@@ -81,6 +81,65 @@ def validate_project_mapping(project_path: str, cache_entry: dict) -> Validation
     )
 
 
+def scan_venv_directory() -> list[Path]:
+    """
+    Scan venv base directory for all venv directories.
+
+    Returns:
+        List of venv directory paths
+    """
+    venv_base = get_venv_base_dir()
+    if not venv_base.exists():
+        return []
+
+    try:
+        return [d for d in venv_base.iterdir() if d.is_dir()]
+    except (OSError, PermissionError):
+        return []
+
+
+def find_untracked_venvs(cache_entries: dict) -> list[dict]:
+    """
+    Find venvs on disk that aren't in cache (treat as orphans).
+
+    Args:
+        cache_entries: Dictionary of cache entries (project_path -> entry)
+
+    Returns:
+        List of untracked venv dictionaries
+    """
+    all_venvs = scan_venv_directory()
+    tracked_venvs = set()
+
+    # Build set of tracked venv paths
+    for cache_entry in cache_entries.values():
+        venv_path_expanded = expand_path_variables(cache_entry["venv_path"])
+        tracked_venvs.add(venv_path_expanded)
+
+    # Find untracked venvs
+    untracked = []
+    for venv_dir in all_venvs:
+        if venv_dir not in tracked_venvs:
+            # Extract project name from directory name (e.g., "test-project_abc123" -> "test-project")
+            dir_name = venv_dir.name
+            project_name = dir_name.rsplit("_", 1)[0] if "_" in dir_name else dir_name
+
+            untracked.append(
+                {
+                    "project_name": f"<unknown: {project_name}>",
+                    "venv_path": None,  # No variable form for untracked
+                    "venv_path_expanded": venv_dir,
+                    "hash": None,  # No hash for untracked
+                    "created_at": None,  # No creation time for untracked
+                    "is_valid": False,  # Treat as orphan
+                    "env_venv_path": None,
+                    "disk_usage_bytes": get_disk_usage(venv_dir),
+                }
+            )
+
+    return untracked
+
+
 def get_disk_usage(path: Path) -> int:
     """
     Calculate total disk usage of a directory in bytes.
@@ -149,12 +208,12 @@ def truncate_path(path: str, max_length: int) -> str:
     return "..." + path[-(max_length - 3) :]
 
 
-def output_table(results: list[ValidationResult], stats: dict, verbose: bool) -> None:
+def output_table(results: list, stats: dict, verbose: bool) -> None:
     """
     Output results as a formatted table.
 
     Args:
-        results: List of validation results
+        results: List of validation results (ValidationResult or untracked dicts)
         stats: Statistics dictionary
         verbose: Whether to show verbose output
     """
@@ -163,29 +222,59 @@ def output_table(results: list[ValidationResult], stats: dict, verbose: bool) ->
     if verbose:
         # Wide format with disk usage
         for result in results:
+            # Handle both ValidationResult and untracked venv dicts
+            is_valid = result.is_valid if hasattr(result, "is_valid") else result["is_valid"]
+            project_name = (
+                result.project_name if hasattr(result, "project_name") else result["project_name"]
+            )
+            disk_usage = (
+                result.disk_usage_bytes
+                if hasattr(result, "disk_usage_bytes")
+                else result["disk_usage_bytes"]
+            )
+            venv_path_expanded = (
+                result.venv_path_expanded
+                if hasattr(result, "venv_path_expanded")
+                else result["venv_path_expanded"]
+            )
+            hash_val = result.hash if hasattr(result, "hash") else result.get("hash")
+            created_at = (
+                result.created_at if hasattr(result, "created_at") else result.get("created_at")
+            )
+            venv_path = result.venv_path if hasattr(result, "venv_path") else result.get("venv_path")
+            env_venv_path = (
+                result.env_venv_path if hasattr(result, "env_venv_path") else result.get("env_venv_path")
+            )
+            project_path = (
+                result.project_path if hasattr(result, "project_path") else result.get("project_path")
+            )
+
             # Use ASCII-safe symbols for Windows compatibility
-            status_symbol = "[OK]" if result.is_valid else "[!]"
-            status_text = "Valid" if result.is_valid else "Orphan"
-            size = format_bytes(result.disk_usage_bytes)
+            status_symbol = "[OK]" if is_valid else "[!]"
+            status_text = "Valid" if is_valid else "Orphan"
+            size = format_bytes(disk_usage)
             status_display = f"{status_symbol} {status_text}"
 
-            color = "green" if result.is_valid else "red"
+            color = "green" if is_valid else "red"
             # Show project name, status, size on first line
-            formatted_line = f"{result.project_name:<20} "
+            formatted_line = f"{project_name:<20} "
             echo(formatted_line, nl=False)
             click.secho(f"{status_display:<15}", fg=color, nl=False)
             echo(f" {size}")  # Size on same line
 
             # Extra details in verbose mode
-            echo(f"  Project: {result.project_path}")
-            echo(f"  Venv:    {result.venv_path_expanded}")
-            echo(f"  Hash:    {result.hash}")
-            echo(f"  Created: {result.created_at}")
+            if project_path:
+                echo(f"  Project: {project_path}")
+            echo(f"  Venv:    {venv_path_expanded}")
+            if hash_val:
+                echo(f"  Hash:    {hash_val}")
+            if created_at:
+                echo(f"  Created: {created_at}")
 
-            if not result.is_valid:
-                echo(f"  Cache:     {result.venv_path}")
+            if not is_valid and venv_path:
+                echo(f"  Cache:     {venv_path}")
                 echo(
-                    f"  .env.uve:  {result.env_venv_path or 'Not found (or path mismatch)'}"
+                    f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}"
                 )
             echo("")
     else:
@@ -195,17 +284,28 @@ def output_table(results: list[ValidationResult], stats: dict, verbose: bool) ->
         echo("-" * 80)  # Fixed width separator
 
         for result in results:
+            # Handle both ValidationResult and untracked venv dicts
+            is_valid = result.is_valid if hasattr(result, "is_valid") else result["is_valid"]
+            project_name = (
+                result.project_name if hasattr(result, "project_name") else result["project_name"]
+            )
+            venv_path_expanded = (
+                result.venv_path_expanded
+                if hasattr(result, "venv_path_expanded")
+                else result["venv_path_expanded"]
+            )
+
             # Use ASCII-safe symbols for Windows compatibility
-            status_symbol = "[OK]" if result.is_valid else "[!]"
-            status_text = "Valid" if result.is_valid else "Orphan"
+            status_symbol = "[OK]" if is_valid else "[!]"
+            status_text = "Valid" if is_valid else "Orphan"
             status_display = f"{status_symbol} {status_text}"
 
-            color = "green" if result.is_valid else "red"
+            color = "green" if is_valid else "red"
             # Don't truncate venv path - show full path so user can click it
-            formatted_line = f"{result.project_name:<20} "
+            formatted_line = f"{project_name:<20} "
             echo(formatted_line, nl=False)
             click.secho(f"{status_display:<15}", fg=color, nl=False)
-            echo(f" {result.venv_path_expanded}")
+            echo(f" {venv_path_expanded}")
 
     # Summary
     echo(
@@ -217,29 +317,50 @@ def output_table(results: list[ValidationResult], stats: dict, verbose: bool) ->
         echo(f"Total disk usage: {total_size}")
 
 
-def output_json_format(results: list[ValidationResult], stats: dict) -> None:
+def output_json_format(results: list, stats: dict) -> None:
     """
     Output results as JSON.
 
     Args:
-        results: List of validation results
+        results: List of validation results (ValidationResult or untracked dicts)
         stats: Statistics dictionary
     """
+    venvs_data = []
+    for r in results:
+        # Handle both ValidationResult and untracked venv dicts
+        if hasattr(r, "is_valid"):
+            # ValidationResult object
+            venvs_data.append(
+                {
+                    "project_name": r.project_name,
+                    "project_path": str(r.project_path),
+                    "venv_path": r.venv_path,
+                    "venv_path_expanded": str(r.venv_path_expanded),
+                    "hash": r.hash,
+                    "created_at": r.created_at,
+                    "status": "valid" if r.is_valid else "orphan",
+                    "cache_matches_env": r.is_valid,
+                    "disk_usage_bytes": r.disk_usage_bytes,
+                }
+            )
+        else:
+            # Untracked venv dict
+            venvs_data.append(
+                {
+                    "project_name": r["project_name"],
+                    "project_path": None,  # Untracked venvs have no associated project
+                    "venv_path": None,  # No cache entry
+                    "venv_path_expanded": str(r["venv_path_expanded"]),
+                    "hash": None,
+                    "created_at": None,
+                    "status": "orphan",
+                    "cache_matches_env": False,
+                    "disk_usage_bytes": r["disk_usage_bytes"],
+                }
+            )
+
     data = {
-        "venvs": [
-            {
-                "project_name": r.project_name,
-                "project_path": str(r.project_path),
-                "venv_path": r.venv_path,
-                "venv_path_expanded": str(r.venv_path_expanded),
-                "hash": r.hash,
-                "created_at": r.created_at,
-                "status": "valid" if r.is_valid else "orphan",
-                "cache_matches_env": r.is_valid,
-                "disk_usage_bytes": r.disk_usage_bytes,
-            }
-            for r in results
-        ],
+        "venvs": venvs_data,
         "summary": {
             "total": stats["total"],
             "valid": stats["valid"],
@@ -259,7 +380,7 @@ def list_command(
     json_output: bool,
 ) -> None:
     """
-    List all managed venvs with validation status.
+    List all managed venvs with validation status, including untracked venvs as orphans.
 
     Args:
         ctx: Click context
@@ -277,7 +398,18 @@ def list_command(
         error(f"Failed to load cache: {e}")
         sys.exit(1)
 
-    if not mappings:
+    # 2. Validate all cached mappings
+    results = []
+    for project_path, cache_entry in mappings.items():
+        result = validate_project_mapping(project_path, cache_entry)
+        results.append(result)
+
+    # 3. Find and add untracked venvs as orphans
+    untracked_venvs = find_untracked_venvs(mappings)
+    results.extend(untracked_venvs)
+
+    # If no venvs at all (cached or untracked)
+    if not results:
         if json_output:
             print_json(
                 {
@@ -295,15 +427,9 @@ def list_command(
             echo("\nRun 'prime-uve init' in a project directory to get started.")
         return
 
-    # 2. Validate all mappings
-    results = []
-    for project_path, cache_entry in mappings.items():
-        result = validate_project_mapping(project_path, cache_entry)
-        results.append(result)
-
-    # 3. Filter if requested
+    # 4. Filter if requested
     if orphan_only:
-        results = [r for r in results if not r.is_valid]
+        results = [r for r in results if not (r.is_valid if hasattr(r, "is_valid") else r["is_valid"])]
 
         if not results:
             if json_output:
@@ -322,15 +448,28 @@ def list_command(
                 info("No orphaned venvs found. All cached venvs are valid!")
             return
 
-    # 4. Calculate statistics
+    # 5. Calculate statistics
+    total_cached = len(mappings)
+    total_untracked = len(untracked_venvs)
+    total_count = total_cached + total_untracked
+
+    valid_count = sum(1 for r in results if (r.is_valid if hasattr(r, "is_valid") else r["is_valid"]))
+    orphaned_count = sum(
+        1 for r in results if not (r.is_valid if hasattr(r, "is_valid") else r["is_valid"])
+    )
+    total_disk = sum(
+        (r.disk_usage_bytes if hasattr(r, "disk_usage_bytes") else r["disk_usage_bytes"])
+        for r in results
+    )
+
     stats = {
-        "total": len(mappings),
-        "valid": sum(1 for r in results if r.is_valid),
-        "orphaned": sum(1 for r in results if not r.is_valid),
-        "total_disk_usage": sum(r.disk_usage_bytes for r in results),
+        "total": total_count,
+        "valid": valid_count,
+        "orphaned": orphaned_count,
+        "total_disk_usage": total_disk,
     }
 
-    # 5. Output
+    # 6. Output
     if json_output:
         output_json_format(results, stats)
     else:

@@ -18,6 +18,8 @@ from prime_uve.cli.prune import (
     prune_orphan,
     prune_path,
     remove_venv_directory,
+    scan_venv_directory,
+    find_untracked_venvs,
 )
 from prime_uve.cli.main import cli
 
@@ -230,13 +232,16 @@ class TestPruneCommand:
         assert "[DRY RUN]" in result.output
         mock_cache.clear.assert_not_called()  # Should not clear in dry run
 
+    @patch("prime_uve.cli.prune.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_command_orphan_json_output(self, mock_cache_class, runner, tmp_path):
+    def test_prune_command_orphan_json_output(self, mock_cache_class, mock_scan, runner, tmp_path):
         """Test prune --orphan with JSON output."""
         # Setup mock cache
         mock_cache = Mock()
         mock_cache.list_all.return_value = {}
         mock_cache_class.return_value = mock_cache
+        # Mock scan_venv_directory to return no venvs
+        mock_scan.return_value = []
 
         result = runner.invoke(cli, ["prune", "--orphan", "--json"])
 
@@ -316,8 +321,9 @@ class TestPruneAll:
 class TestPruneOrphan:
     """Tests for prune_orphan function."""
 
+    @patch("prime_uve.cli.prune.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_orphan_no_orphans(self, mock_cache_class, runner, tmp_path):
+    def test_prune_orphan_no_orphans(self, mock_cache_class, mock_scan, runner, tmp_path):
         """Test prune --orphan with no orphaned venvs."""
         project_path = tmp_path / "project1"
         project_path.mkdir()
@@ -336,17 +342,20 @@ class TestPruneOrphan:
             }
         }
         mock_cache_class.return_value = mock_cache
+        # Mock scan to return no untracked venvs
+        mock_scan.return_value = []
 
         result = runner.invoke(cli, ["prune", "--orphan", "--yes"])
 
         assert result.exit_code == 0
         assert "No orphaned venvs found" in result.output
 
+    @patch("prime_uve.cli.prune.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
     @patch("prime_uve.cli.prune.expand_path_variables")
     @patch("prime_uve.cli.prune.get_disk_usage")
     def test_prune_orphan_with_orphans(
-        self, mock_disk_usage, mock_expand, mock_cache_class, runner, tmp_path
+        self, mock_disk_usage, mock_expand, mock_cache_class, mock_scan, runner, tmp_path
     ):
         """Test prune --orphan with orphaned venvs."""
         project_path = tmp_path / "project1"
@@ -371,6 +380,8 @@ class TestPruneOrphan:
         mock_cache_class.return_value = mock_cache
         mock_expand.return_value = venv1
         mock_disk_usage.return_value = 1024
+        # Mock scan to return no untracked venvs
+        mock_scan.return_value = []
 
         result = runner.invoke(cli, ["prune", "--orphan", "--yes"])
 

@@ -9,9 +9,11 @@ from click.testing import CliRunner
 
 from prime_uve.cli.list import (
     ValidationResult,
+    find_untracked_venvs,
     format_bytes,
     get_disk_usage,
     list_command,
+    scan_venv_directory,
     truncate_path,
     validate_project_mapping,
 )
@@ -229,6 +231,8 @@ class TestListCommandCLI:
             return mock_cache_instance
 
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list"])
@@ -244,6 +248,8 @@ class TestListCommandCLI:
         mock_cache_instance = Mock()
         mock_cache_instance.list_all.return_value = {}
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--json"])
@@ -277,6 +283,8 @@ class TestListCommandCLI:
             }
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no untracked venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list"])
@@ -318,6 +326,8 @@ class TestListCommandCLI:
             },
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no untracked venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list"])
@@ -357,6 +367,8 @@ class TestListCommandCLI:
             },
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no untracked venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--orphan-only"])
@@ -385,6 +397,8 @@ class TestListCommandCLI:
             }
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no untracked venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--orphan-only"])
@@ -412,6 +426,8 @@ class TestListCommandCLI:
             }
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no untracked venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--verbose"])
@@ -441,6 +457,8 @@ class TestListCommandCLI:
             }
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no untracked venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--json"])
@@ -474,6 +492,8 @@ class TestListCommandCLI:
             }
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return no untracked venvs
+        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list"])
@@ -484,3 +504,80 @@ class TestListCommandCLI:
         assert "VENV PATH" in result.output
         assert "STATUS" in result.output
         assert "---" in result.output  # Separator line
+
+    def test_list_includes_untracked_venvs_as_orphans(self, runner, tmp_path, monkeypatch):
+        """Test that list includes untracked venvs as orphans."""
+        # Setup mock venv directories (untracked)
+        venv_base = tmp_path / "prime-uve" / "venvs"
+        venv_base.mkdir(parents=True)
+        untracked_venv1 = venv_base / "test-project_abc123"
+        untracked_venv1.mkdir()
+        (untracked_venv1 / "file.txt").write_text("content")
+
+        # Mock cache to be empty
+        mock_cache_instance = Mock()
+        mock_cache_instance.list_all.return_value = {}
+        monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        # Mock scan_venv_directory to return untracked venvs
+        monkeypatch.setattr(
+            "prime_uve.cli.list.scan_venv_directory", lambda: [untracked_venv1]
+        )
+
+        # Execute
+        result = runner.invoke(cli, ["list"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "<unknown: test-project>" in result.output
+        assert "[!] Orphan" in result.output
+        assert "Summary: 1 total, 0 valid, 1 orphaned" in result.output
+
+    def test_list_untracked_venv_project_name_extraction(self, runner, tmp_path, monkeypatch):
+        """Test extracting project name from untracked venv directory."""
+        # Setup mock venv directories
+        venv_base = tmp_path / "prime-uve" / "venvs"
+        venv_base.mkdir(parents=True)
+        untracked_venv = venv_base / "my-project_xyz789"
+        untracked_venv.mkdir()
+
+        # Mock cache and scanner
+        mock_cache_instance = Mock()
+        mock_cache_instance.list_all.return_value = {}
+        monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        monkeypatch.setattr(
+            "prime_uve.cli.list.scan_venv_directory", lambda: [untracked_venv]
+        )
+
+        # Execute
+        result = runner.invoke(cli, ["list"])
+
+        # Assert - should extract "my-project" from "my-project_xyz789"
+        assert result.exit_code == 0
+        assert "<unknown: my-project>" in result.output
+
+    def test_list_untracked_venvs_with_json(self, runner, tmp_path, monkeypatch):
+        """Test untracked venvs in JSON output."""
+        # Setup mock venv
+        venv_base = tmp_path / "prime-uve" / "venvs"
+        venv_base.mkdir(parents=True)
+        untracked_venv = venv_base / "project_123abc"
+        untracked_venv.mkdir()
+
+        # Mock cache and scanner
+        mock_cache_instance = Mock()
+        mock_cache_instance.list_all.return_value = {}
+        monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
+        monkeypatch.setattr(
+            "prime_uve.cli.list.scan_venv_directory", lambda: [untracked_venv]
+        )
+
+        # Execute
+        result = runner.invoke(cli, ["list", "--json"])
+
+        # Assert
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert len(data["venvs"]) == 1
+        assert data["venvs"][0]["status"] == "orphan"
+        assert data["venvs"][0]["cache_matches_env"] is False
+        assert data["summary"]["orphaned"] == 1
