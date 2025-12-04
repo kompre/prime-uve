@@ -215,6 +215,87 @@ def update_env_file(path: Path, updates: dict[str, str]) -> None:
     write_env_file(path, env_vars)
 
 
+def update_env_file_preserve_format(path: Path, updates: dict[str, str]) -> None:
+    """Update specific variables in .env.uve, preserving file format and order.
+
+    This function:
+    - Preserves comments and blank lines
+    - Preserves line order
+    - Updates existing variables in-place
+    - Appends new variables at the end
+
+    Args:
+        path: Path to .env.uve file
+        updates: Dict of variables to add/update
+
+    Raises:
+        EnvFileError: If file cannot be read or written
+
+    Example:
+        >>> update_env_file_preserve_format(
+        ...     Path(".env.uve"),
+        ...     {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/proj_new"}
+        ... )
+    """
+    # If file doesn't exist, just write the new variables
+    if not path.exists():
+        write_env_file(path, updates)
+        return
+
+    # Read existing content line by line
+    try:
+        content = path.read_text(encoding='utf-8')
+    except (FileNotFoundError, PermissionError, OSError) as e:
+        raise EnvFileError(f"Cannot read file {path}: {e}") from e
+
+    lines = content.splitlines()
+    updated_keys = set()
+    new_lines = []
+
+    # Process existing lines
+    for line in lines:
+        stripped = line.strip()
+
+        # Preserve comments and empty lines as-is
+        if not stripped or stripped.startswith('#'):
+            new_lines.append(line)
+            continue
+
+        # Check if this is a variable assignment
+        if '=' in line:
+            key, _, value = line.partition('=')
+            key = key.strip()
+
+            # If this key is being updated, replace the line
+            if key in updates:
+                new_lines.append(f"{key}={updates[key]}")
+                updated_keys.add(key)
+            else:
+                # Keep the original line
+                new_lines.append(line)
+        else:
+            # Malformed line, keep as-is
+            new_lines.append(line)
+
+    # Append any new variables that weren't in the file
+    for key, value in updates.items():
+        if key not in updated_keys:
+            new_lines.append(f"{key}={value}")
+
+    # Build final content
+    content = '\n'.join(new_lines)
+
+    # Add trailing newline if there's content
+    if content and not content.endswith('\n'):
+        content += '\n'
+
+    # Write file
+    try:
+        path.write_text(content, encoding='utf-8')
+    except (PermissionError, OSError) as e:
+        raise EnvFileError(f"Cannot write file {path}: {e}") from e
+
+
 def get_venv_path(env_vars: dict[str, str], expand: bool = False) -> str | Path:
     """Extract venv path from parsed environment variables.
 

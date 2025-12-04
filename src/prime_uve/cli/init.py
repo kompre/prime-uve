@@ -7,7 +7,11 @@ import click
 
 from prime_uve.cli.output import confirm, echo, info, success
 from prime_uve.core.cache import Cache
-from prime_uve.core.env_file import find_env_file, read_env_file, write_env_file
+from prime_uve.core.env_file import (
+    find_env_file,
+    read_env_file,
+    update_env_file_preserve_format,
+)
 from prime_uve.core.paths import expand_path_variables, generate_hash, generate_venv_path
 from prime_uve.core.project import find_project_root, get_project_metadata
 
@@ -110,17 +114,8 @@ def init_command(
         return
 
     # 7. Create/update .env.uve
-    # Preserve other variables if forcing
-    existing_vars = {}
-    if force and env_file.exists():
-        try:
-            existing_vars = read_env_file(env_file)
-        except Exception:
-            # If we can't read existing file, start fresh
-            existing_vars = {}
-
-    existing_vars["UV_PROJECT_ENVIRONMENT"] = venv_path
-    write_env_file(env_file, existing_vars)
+    # Use update_env_file_preserve_format to preserve file structure, comments, and order
+    update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": venv_path})
 
     # 8. Add to cache
     cache = Cache()
