@@ -127,7 +127,6 @@ source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "filelock" },
-    { name = "ruff" },
 ]
 
 [package.dev-dependencies]
@@ -141,7 +140,6 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.0.0" },
     { name = "filelock", specifier = ">=3.20.0" },
-    { name = "ruff", specifier = ">=0.14.7" },
 ]
 
 [package.metadata.requires-dev]
