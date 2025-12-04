@@ -1,0 +1,117 @@
+name: Run Tests
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+
+concurrency:
+  group: test-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to detect changed files
+
+      - name: Load workflow config
+        run: |
+          if [ -f .github/workflows/config.env ]; then
+            cat .github/workflows/config.env >> $GITHUB_ENV
+          fi
+
+      - name: Detect changed files
+        id: changes
+        run: |
+          # Get list of changed files in this PR
+          git fetch origin ${{ github.base_ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Check if all changes are documentation-only
+          DOCS_ONLY=true
+          while IFS= read -r file; do
+            if [[ ! "$file" =~ $DOCS_PATTERNS ]]; then
+              echo "Non-docs file found: $file"
+              DOCS_ONLY=false
+              break
+            fi
+          done <<< "$CHANGED_FILES"
+
+          if [ "$DOCS_ONLY" = true ]; then
+            echo "✅ Documentation-only changes detected"
+            echo "docs_only=true" >> $GITHUB_OUTPUT
+          else
+            echo "🔍 Code changes detected - running full tests"
+            echo "docs_only=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Skip tests for documentation-only changes
+        if: steps.changes.outputs.docs_only == 'true'
+        run: |
+          echo "📚 This PR contains only documentation changes"
+          echo "⏭️  Skipping tests - workflow will report success"
+
+      - name: Set up Python
+        if: steps.changes.outputs.docs_only == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ${{ env.PYTHON_VERSION_FILE }}
+
+      - name: Install uv
+        if: steps.changes.outputs.docs_only == 'false'
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install Quarto
+        if: steps.changes.outputs.docs_only == 'false' && env.ENABLE_QUARTO == 'true'
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: release
+
+      - name: Install locales for internationalization tests
+        if: steps.changes.outputs.docs_only == 'false' && env.ENABLE_LOCALES == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y locales
+          sudo locale-gen it_IT.UTF-8
+          sudo locale-gen de_DE.UTF-8
+          sudo locale-gen fr_FR.UTF-8
+          sudo locale-gen es_ES.UTF-8
+          sudo locale-gen pt_PT.UTF-8
+          sudo update-locale
+
+      - name: Install dependencies
+        if: steps.changes.outputs.docs_only == 'false'
+        run: uv sync --group ${{ env.DEV_GROUP }}
+
+      - name: Run linter (Ruff)
+        if: steps.changes.outputs.docs_only == 'false'
+        run: ${{ env.LINT_COMMAND }} ${{ env.SOURCE_PATHS }} ${{ env.TEST_PATHS }}
+
+      - name: Run tests
+        if: steps.changes.outputs.docs_only == 'false'
+        run: uv run pytest ${{ env.TEST_PATHS }} -v
+
+      - name: Validate docstrings
+        if: steps.changes.outputs.docs_only == 'false' && env.ENABLE_DOCSTRING_VALIDATION == 'true'
+        run: uv run python scripts/validate_docstrings.py
+
+      - name: Tests completed successfully
+        run: |
+          if [ "${{ steps.changes.outputs.docs_only }}" = "true" ]; then
+            echo "✅ Documentation-only PR - no tests required"
+          else
+            echo "✅ All tests passed"
+          fi

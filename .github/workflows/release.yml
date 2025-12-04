@@ -1,0 +1,201 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+
+# Prevent concurrent releases
+concurrency:
+  group: release
+  cancel-in-progress: false  # Queue releases instead of canceling
+
+jobs:
+  release:
+    name: Automated Release
+    # Run if PR was merged with appropriate label:
+    # - 'release' label on main branch → Production PyPI + tag + GitHub Release
+    # - 'test-release' label on dev branch → TestPyPI only (no tag, no release)
+    if: |
+      github.event.pull_request.merged == true &&
+      (
+        (github.event.pull_request.base.ref == 'main' && contains(github.event.pull_request.labels.*.name, 'release')) ||
+        (github.event.pull_request.base.ref == 'dev' && contains(github.event.pull_request.labels.*.name, 'test-release'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Create releases and tags
+      id-token: write  # OIDC for PyPI Trusted Publishing
+
+    steps:
+      - name: Checkout merged branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 0  # Full history for proper tagging
+
+      - name: Load workflow config
+        run: |
+          if [ -f .github/workflows/config.env ]; then
+            cat .github/workflows/config.env >> $GITHUB_ENV
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ${{ env.PYTHON_VERSION_FILE }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install Quarto
+        if: env.ENABLE_QUARTO == 'true'
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: release
+
+      - name: Install locales for internationalization tests
+        if: env.ENABLE_LOCALES == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y locales
+          sudo locale-gen it_IT.UTF-8
+          sudo locale-gen de_DE.UTF-8
+          sudo locale-gen fr_FR.UTF-8
+          sudo locale-gen es_ES.UTF-8
+          sudo locale-gen pt_PT.UTF-8
+          sudo update-locale
+
+      - name: Install dependencies
+        run: uv sync --group ${{ env.DEV_GROUP }}
+
+      - name: Run tests
+        run: uv run pytest ${{ env.TEST_PATHS }} -v
+
+      - name: Extract version from pyproject.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+          TAG="v$VERSION"
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+          echo "📦 Version: $VERSION"
+          echo "🏷️  Tag: $TAG"
+
+      - name: Determine publish target
+        id: target
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HAS_RELEASE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'release') }}
+          HAS_TEST_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'test-release') }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Determine target based on branch and label
+          # main + release → PyPI (production) + tag + GitHub Release
+          # dev + test-release → TestPyPI only (no tag, no release)
+          if [ "$BASE_REF" == "$MAIN_BRANCH" ] && [ "$HAS_RELEASE_LABEL" == "true" ]; then
+            echo "repository_url=https://upload.pypi.org/legacy/" >> $GITHUB_OUTPUT
+            echo "target_name=PyPI" >> $GITHUB_OUTPUT
+            echo "is_production=true" >> $GITHUB_OUTPUT
+            echo "create_tag=true" >> $GITHUB_OUTPUT
+            echo "create_release=true" >> $GITHUB_OUTPUT
+            echo "🎯 Target: Production PyPI"
+            echo "🏷️  Will create tag: v$VERSION"
+            echo "📝 Will create GitHub Release"
+          elif [ "$BASE_REF" == "$DEV_BRANCH" ] && [ "$HAS_TEST_LABEL" == "true" ]; then
+            echo "repository_url=https://test.pypi.org/legacy/" >> $GITHUB_OUTPUT
+            echo "target_name=TestPyPI" >> $GITHUB_OUTPUT
+            echo "is_production=false" >> $GITHUB_OUTPUT
+            echo "create_tag=false" >> $GITHUB_OUTPUT
+            echo "create_release=false" >> $GITHUB_OUTPUT
+            echo "🎯 Target: TestPyPI"
+            echo "🏷️  Will NOT create tag (test release)"
+            echo "📝 Will NOT create GitHub Release (test release)"
+          else
+            echo "❌ Error: Invalid branch/label combination"
+            echo "   Branch: $BASE_REF"
+            echo "   Labels: release=$HAS_RELEASE_LABEL, test-release=$HAS_TEST_LABEL"
+            exit 1
+          fi
+
+      - name: Check if tag already exists
+        if: steps.target.outputs.create_tag == 'true'
+        run: |
+          if git rev-parse "refs/tags/${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "❌ Error: Tag ${{ steps.version.outputs.tag }} already exists!"
+            echo ""
+            echo "This version has already been released."
+            echo "Please bump the version in pyproject.toml and try again."
+            exit 1
+          fi
+          echo "✅ Tag ${{ steps.version.outputs.tag }} is available"
+
+      - name: Create and push tag
+        if: steps.target.outputs.create_tag == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release version ${{ steps.version.outputs.version }}
+
+          Released from PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+          Target: ${{ steps.target.outputs.target_name }}"
+
+          git push origin "${{ steps.version.outputs.tag }}"
+          echo "✅ Created and pushed tag: ${{ steps.version.outputs.tag }}"
+
+      - name: Build package
+        run: |
+          uv build
+          echo "📦 Build artifacts:"
+          ls -lh dist/
+
+      - name: Publish to PyPI
+        if: steps.target.outputs.is_production == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
+          verbose: true
+
+      - name: Publish to TestPyPI
+        if: steps.target.outputs.is_production == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+          print-hash: true
+          verbose: true
+
+      - name: Create GitHub Release
+        if: steps.target.outputs.create_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            # ${{ github.event.pull_request.title }}
+
+            ${{ github.event.pull_request.body }}
+
+            ---
+
+            **📦 Version:** `${{ steps.version.outputs.version }}`
+            **🎯 Published To:** PyPI
+
+            Install from PyPI:
+            ```bash
+            pip install ${{ env.PYPI_PACKAGE_NAME }}==${{ steps.version.outputs.version }}
+            ```
+
+            **PyPI Package:** https://pypi.org/project/${{ env.PYPI_PACKAGE_NAME }}/${{ steps.version.outputs.version }}/
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ github.event.pull_request.base.sha }}...${{ steps.version.outputs.tag }}
+          files: dist/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true

@@ -4,9 +4,41 @@
 
 <!-- Add tasks here. When creating a proposal, move the task description to the proposal file -->
 
-### define architecture for prime-uve cli tool
+### set proper venv cache location for each major platform
 
-define the architecture for the prime-uve cli tool as described in README.md. Define the overarching method then break it down into smaller tasks with clear objectives and deliverables.
+since we set $home as environment variable when `uve` is called, then we can set a proper cache location for each major platform (windows, linux, mac) with a new variable `$UVE_VENV_CACHE`.
+
+### update cache.json
+
+the cache.json will be populated only when running `prime-uve init`, so there coule be a situation where the .env.uve is already created, but the rproject reference is missing from cache.json, because the user did some operation. If `.env.uve` is already set, user can call `uve sync` that will create the venv in the correct location, but the cache.json will not be updated, and the venv will be marked as orphaned even if it is valid.
+
+We should then add a new command to `prime-uve register`, that will update the cache.json file, when called from within a project that has .env.uve file and `UV_PROJECT_ENVIRONMENT` is set.
+
+`register` should be called before `list` or `prune` to ensure that the cache is up to date.
+
+### correct message output for `prime-uve init`
+
+When `prime-uve init` is called, the current message output is this
+
+```sh
+[OK] Project: prime-uve
+[OK] Project root: C:\Users\s.follador\Documents\github\prime-uve
+[OK] Venv path: ${HOME}/prime-uve/venvs/prime-uve_043331fa
+[OK] Created .env.uve ### or updated if .env.uve already existed
+[OK] Added to cache
+
+Next steps:
+  1. Use 'uve' instead of 'uv' for all commands
+  2. Run 'uve sync' to create venv and install dependencies
+  3. Commit .env.uve to version control ### delete this step, let user decide what to do 
+
+Example:
+  uve sync                # Creates venv and installs dependencies
+  uve add requests        # Add a package
+  uve run python app.py   # Run your application
+```
+
+
 
 ## Instructions
 

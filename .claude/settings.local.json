@@ -16,7 +16,8 @@
       "Bash(git mv:*)",
       "Bash(uv run:*)",
       "Bash(findstr:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
