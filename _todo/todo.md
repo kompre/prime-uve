@@ -13,4 +13,5 @@ define the architecture for the prime-uve cli tool as described in README.md. De
 - Write clear, specific task objectives with priorities
 - Claude will create detailed proposals in `_todo/proposal/[task-name].md`
 - After review/approval, proposals move to `_todo/pending/`
+- start developing in new branch
 - Completed tasks archive to `_todo/completed/YYYY-MM-DD/`

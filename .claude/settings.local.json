@@ -11,7 +11,8 @@
       "Bash(gh pr create:*)",
       "Bash(git push:*)",
       "Bash(uv sync:*)",
-      "Bash(gh pr view:*)"
+      "Bash(gh pr view:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
