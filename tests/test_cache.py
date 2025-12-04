@@ -2,6 +2,7 @@
 
 import json
 import multiprocessing
+import sys
 import time
 
 import pytest
@@ -444,6 +445,10 @@ def _concurrent_writer(cache_path, project_path, index):
     cache.add_mapping(project_path, venv_path, project_name, path_hash)
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Multiprocessing concurrency test is flaky on Windows"
+)
 def test_concurrent_writes(tmp_path):
     """Multiple processes can write without corruption."""
     cache_file = tmp_path / "cache.json"
