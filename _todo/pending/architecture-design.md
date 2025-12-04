@@ -668,23 +668,35 @@ uve = "prime_uve.uve.wrapper:main"
 
 ---
 
-#### Task 3.4: Implement `prime-uve prune`
+#### Task 3.4: Implement `prime-uve prune` ✅ COMPLETED
 **Objective**: Clean up venv directories.
 
 **Deliverables**:
-- `src/prime_uve/cli/prune.py`
-- All four modes: --all, --orphan, --current, path
-- Confirmation prompts
-- `--dry-run` support
-- Unit and integration tests
+- ✅ `src/prime_uve/cli/prune.py` (682 lines)
+- ✅ All four modes: --all, --orphan, --current, path
+- ✅ Confirmation prompts
+- ✅ `--dry-run` support
+- ✅ Unit and integration tests (29 tests, 508 lines)
 
 **Acceptance Criteria**:
-- Orphan identification uses simple 1:1 comparison: cached path != `.env.uve` value
-- Shows what will be deleted before deleting
-- `--yes` skips confirmation
-- `--dry-run` doesn't delete anything
-- Safely handles errors during deletion
-- Updates cache after deletion
+- ✅ Orphan identification uses simple 1:1 comparison: cached path != `.env.uve` value
+- ✅ Shows what will be deleted before deleting
+- ✅ `--yes` skips confirmation
+- ✅ `--dry-run` doesn't delete anything
+- ✅ Safely handles errors during deletion
+- ✅ Updates cache after deletion
+
+**Additional Features Implemented**:
+- ✅ JSON output for automation
+- ✅ Verbose mode for detailed logs
+- ✅ Disk usage calculation and human-readable formatting
+- ✅ ASCII-safe symbols on Windows (fixed encoding issues)
+- ✅ Path validation for safety
+- ✅ Cross-platform support
+
+**Completed**: 2025-12-04
+**PR**: https://github.com/kompre/prime-uve/pull/10
+**Commit**: f3bc88a
 
 ---
 
