@@ -155,3 +155,15 @@ def ensure_home_set() -> None:
         else:
             # Last resort fallback
             os.environ["HOME"] = os.path.expanduser("~")
+
+
+def get_venv_base_dir() -> Path:
+    """Get the base directory where all venvs are stored.
+
+    Returns the expanded path to the venv base directory:
+    ${HOME}/prime-uve/venvs -> /home/user/prime-uve/venvs
+
+    Returns:
+        Path to venv base directory
+    """
+    return expand_path_variables("${HOME}/prime-uve/venvs")

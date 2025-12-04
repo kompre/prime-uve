@@ -80,15 +80,35 @@ def list(
 
 
 @cli.command()
+@click.option("--all", "all_venvs", is_flag=True, help="Remove all venvs")
+@click.option("--orphan", is_flag=True, help="Remove orphaned venvs only")
+@click.option("--current", is_flag=True, help="Remove current project's venv")
+@click.argument("path", required=False, type=click.Path())
 @common_options
 @handle_errors
 @click.pass_context
-def prune(ctx, verbose: bool, yes: bool, dry_run: bool, json_output: bool):
-    """Clean up venv directories."""
-    if verbose:
-        info("prune command - not yet implemented")
-    error("Command not implemented yet")
-    sys.exit(1)
+def prune(
+    ctx,
+    all_venvs: bool,
+    orphan: bool,
+    current: bool,
+    path: Optional[str],
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+):
+    """Clean up venv directories.
+
+    Must specify one mode:
+    - --all: Remove all managed venvs
+    - --orphan: Remove only orphaned venvs (cache doesn't match .env.uve)
+    - --current: Remove venv for current project
+    - <path>: Remove venv at specific path
+    """
+    from prime_uve.cli.prune import prune_command
+
+    prune_command(ctx, all_venvs, orphan, current, path, verbose, yes, dry_run, json_output)
 
 
 @cli.command()

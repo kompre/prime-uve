@@ -1,29 +1,52 @@
 """Output formatting utilities for CLI."""
 
 import json as json_module
+import sys
 from typing import Any, Dict
 
 import click
 
 
+# Use ASCII-safe symbols on Windows to avoid encoding issues
+def _get_symbols():
+    """Get symbols based on platform."""
+    if sys.platform == "win32":
+        return {
+            "success": "[OK]",
+            "error": "[!]",
+            "warning": "[!]",
+            "info": "[i]",
+        }
+    else:
+        return {
+            "success": "✓",
+            "error": "✗",
+            "warning": "⚠",
+            "info": "ℹ",
+        }
+
+
+_SYMBOLS = _get_symbols()
+
+
 def success(message: str) -> None:
     """Print success message in green."""
-    click.secho(f"✓ {message}", fg="green")
+    click.secho(f"{_SYMBOLS['success']} {message}", fg="green")
 
 
 def error(message: str) -> None:
     """Print error message in red."""
-    click.secho(f"✗ {message}", fg="red", err=True)
+    click.secho(f"{_SYMBOLS['error']} {message}", fg="red", err=True)
 
 
 def warning(message: str) -> None:
     """Print warning message in yellow."""
-    click.secho(f"⚠ {message}", fg="yellow")
+    click.secho(f"{_SYMBOLS['warning']} {message}", fg="yellow")
 
 
 def info(message: str) -> None:
     """Print info message in blue."""
-    click.secho(f"ℹ {message}", fg="blue")
+    click.secho(f"{_SYMBOLS['info']} {message}", fg="blue")
 
 
 def print_json(data: Dict[str, Any]) -> None:
