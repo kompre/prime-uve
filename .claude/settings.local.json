@@ -20,7 +20,8 @@
       "Bash(dir:*)",
       "Bash(gh label create:*)",
       "Bash(gh pr edit:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
