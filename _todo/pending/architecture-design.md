@@ -81,7 +81,7 @@ prime-uve/
 - `get_mapping(project_path)` - Retrieve venv for project
 - `remove_mapping(project_path)` - Remove from cache
 - `list_all()` - Return all mappings
-- `validate_mapping(project_path)` - Check if project/venv/env-file still exist and match
+- `validate_mapping(project_path)` - Check if cached venv_path matches `UV_PROJECT_ENVIRONMENT` in `.env.uve` (simple 1:1 comparison)
 
 **Locking**: Use file locking for concurrent access safety.
 
@@ -251,20 +251,33 @@ Note: Shows both the variable form (what's stored) and expanded form (where venv
 
 **Purpose**: Show all tracked venvs with validation status.
 
+**Validation Logic** (Simplified):
+For each cached entry, check ONE thing: Does the `UV_PROJECT_ENVIRONMENT` value in the project's `.env.uve` match the cached venv path?
+
+- **Match** → ✓ Valid (cache and .env.uve agree, this is the source of truth)
+- **No match** → ✗ Orphan (any reason: project deleted, .env.uve deleted, path changed, .env.uve modified)
+
+**Why this is correct**:
+- `.env.uve` is the source of truth - it defines what venv is actually used
+- Cache is just an index for convenience (finding all managed venvs)
+- If cache and `.env.uve` disagree, the cached venv is orphaned and safe to prune
+- We don't care WHY they disagree (project moved, user edited file, etc.)
+- Simple 1:1 mapping check is all we need
+
 **Steps**:
 1. Read cache
-2. For each mapping, validate:
-   - Project directory exists
-   - Venv directory exists
-   - `.env.uve` exists and contains matching path
+2. For each cached mapping:
+   - Try to read `.env.uve` at project path
+   - Compare `UV_PROJECT_ENVIRONMENT` value with cached venv path
+   - Status: Match = Valid, No match/missing = Orphan
 3. Display table with status
 
 **Output Format**:
 ```
-PROJECT                 VENV                          STATUS
+PROJECT                 VENV PATH                     STATUS
 myproject               ~/prime-uve/venvs/mypr...     ✓ Valid
-old-project             ~/prime-uve/venvs/oldpr...    ✗ Project deleted
-another-project         ~/prime-uve/venvs/anoth...    ⚠ Path mismatch
+old-project             ~/prime-uve/venvs/oldpr...    ✗ Orphan (can prune)
+another-project         ~/prime-uve/venvs/anoth...    ✗ Orphan (can prune)
 ```
 
 **Options**:
@@ -275,6 +288,11 @@ another-project         ~/prime-uve/venvs/anoth...    ⚠ Path mismatch
 
 **Purpose**: Clean up venv directories.
 
+**Validation Logic** (Same as list - simplified):
+- Orphan = cached venv path does NOT match `UV_PROJECT_ENVIRONMENT` in `.env.uve`
+- Valid = cached venv path DOES match `UV_PROJECT_ENVIRONMENT` in `.env.uve`
+- That's it. No other checks needed.
+
 **Modes**:
 
 **`prune --all`**:
@@ -283,12 +301,10 @@ another-project         ~/prime-uve/venvs/anoth...    ⚠ Path mismatch
 - Confirm with user (unless `--yes`)
 
 **`prune --orphan`**:
-- Run validation on all cached venvs
-- Remove venvs where:
-  - Project directory doesn't exist
-  - `.env.uve` missing or path doesn't match cache
-- Remove from cache
-- Keep venvs for valid projects
+- For each cached venv, check if it matches `.env.uve` value
+- If no match (orphan): remove venv directory + remove from cache
+- If match (valid): keep it
+- Simple 1:1 comparison
 
 **`prune --current`**:
 - Find current project's venv from cache
@@ -526,7 +542,7 @@ uve = "prime_uve.uve.wrapper:main"
 **Acceptance Criteria**:
 - Cache persists across program invocations
 - Concurrent access doesn't corrupt cache
-- Validation correctly identifies orphaned venvs
+- Validation uses simple 1:1 comparison: cached venv_path matches `.env.uve` value = valid, otherwise = orphan
 - Invalid cache files are handled gracefully
 
 ---
@@ -645,7 +661,7 @@ uve = "prime_uve.uve.wrapper:main"
 
 **Acceptance Criteria**:
 - Shows all cached venvs
-- Validation status is accurate (✓/✗/⚠)
+- Validation uses simple logic: cached path matches `.env.uve` = ✓ Valid, otherwise = ✗ Orphan (no ⚠ status needed)
 - JSON output is valid and machine-readable
 - Performance is acceptable with 100+ venvs
 - Empty cache shows helpful message
@@ -663,7 +679,7 @@ uve = "prime_uve.uve.wrapper:main"
 - Unit and integration tests
 
 **Acceptance Criteria**:
-- Correctly identifies orphaned venvs
+- Orphan identification uses simple 1:1 comparison: cached path != `.env.uve` value
 - Shows what will be deleted before deleting
 - `--yes` skips confirmation
 - `--dry-run` doesn't delete anything
