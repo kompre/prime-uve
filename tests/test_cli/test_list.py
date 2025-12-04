@@ -1,19 +1,14 @@
 """Tests for the list command."""
 
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from click.testing import CliRunner
 
 from prime_uve.cli.list import (
-    ValidationResult,
-    find_untracked_venvs,
     format_bytes,
     get_disk_usage,
-    list_command,
-    scan_venv_directory,
     truncate_path,
     validate_project_mapping,
 )
@@ -345,7 +340,9 @@ class TestListCommandCLI:
         valid_project = tmp_path / "valid"
         valid_project.mkdir()
         valid_venv = "${HOME}/prime-uve/venvs/valid_abc"
-        (valid_project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={valid_venv}\n")
+        (valid_project / ".env.uve").write_text(
+            f"UV_PROJECT_ENVIRONMENT={valid_venv}\n"
+        )
 
         orphan_project = tmp_path / "orphan"
         orphan_project.mkdir()
@@ -505,7 +502,9 @@ class TestListCommandCLI:
         assert "STATUS" in result.output
         assert "---" in result.output  # Separator line
 
-    def test_list_includes_untracked_venvs_as_orphans(self, runner, tmp_path, monkeypatch):
+    def test_list_includes_untracked_venvs_as_orphans(
+        self, runner, tmp_path, monkeypatch
+    ):
         """Test that list includes untracked venvs as orphans."""
         # Setup mock venv directories (untracked)
         venv_base = tmp_path / "prime-uve" / "venvs"
@@ -532,7 +531,9 @@ class TestListCommandCLI:
         assert "[!] Orphan" in result.output
         assert "Summary: 1 total, 0 valid, 1 orphaned" in result.output
 
-    def test_list_untracked_venv_project_name_extraction(self, runner, tmp_path, monkeypatch):
+    def test_list_untracked_venv_project_name_extraction(
+        self, runner, tmp_path, monkeypatch
+    ):
         """Test extracting project name from untracked venv directory."""
         # Setup mock venv directories
         venv_base = tmp_path / "prime-uve" / "venvs"

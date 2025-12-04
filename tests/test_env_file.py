@@ -261,7 +261,9 @@ def test_read_env_file_missing_file(tmp_path):
         read_env_file(env_file)
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="Permission tests unreliable on Windows")
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Permission tests unreliable on Windows"
+)
 def test_read_env_file_permission_denied(tmp_path):
     """Permission denied raises EnvFileError."""
     env_file = tmp_path / ".env.uve"
@@ -311,7 +313,7 @@ def test_write_env_file_sorted_keys(tmp_path):
     write_env_file(env_file, env_vars)
 
     content = env_file.read_text()
-    lines = content.strip().split('\n')
+    lines = content.strip().split("\n")
     assert lines == ["ALPHA=first", "MIDDLE=mid", "ZEBRA=last"]
 
 
@@ -348,7 +350,9 @@ def test_write_env_file_empty_dict(tmp_path):
     assert env_file.read_text() == ""
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="Permission tests unreliable on Windows")
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Permission tests unreliable on Windows"
+)
 def test_write_env_file_permission_denied(tmp_path):
     """Permission denied raises EnvFileError."""
     readonly_dir = tmp_path / "readonly"
@@ -410,7 +414,7 @@ def test_update_env_file_preserves_order(tmp_path):
     update_env_file(env_file, {"MIDDLE": "mid"})
 
     content = env_file.read_text()
-    lines = content.strip().split('\n')
+    lines = content.strip().split("\n")
     assert lines == ["ALPHA=first", "MIDDLE=mid", "ZEBRA=last"]
 
 
@@ -483,7 +487,9 @@ def test_full_workflow_find_read_write(tmp_path):
     assert env_file == project_root / ".env.uve"
 
     # Write initial value
-    write_env_file(env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/proj_abc123"})
+    write_env_file(
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/proj_abc123"}
+    )
 
     # Read back
     env_vars = read_env_file(env_file)

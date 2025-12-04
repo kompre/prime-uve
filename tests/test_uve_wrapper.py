@@ -15,14 +15,18 @@ from prime_uve.uve.wrapper import is_uv_available, main
 def mock_env_file(tmp_path):
     """Create a mock .env.uve file."""
     env_file = tmp_path / ".env.uve"
-    env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_12345678\n")
+    env_file.write_text(
+        "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_12345678\n"
+    )
     return env_file
 
 
 @pytest.fixture
 def mock_find_env_file(mock_env_file):
     """Mock find_env_file_strict to return test env file."""
-    with patch("prime_uve.uve.wrapper.find_env_file_strict", return_value=mock_env_file):
+    with patch(
+        "prime_uve.uve.wrapper.find_env_file_strict", return_value=mock_env_file
+    ):
         yield mock_env_file
 
 
@@ -74,11 +78,14 @@ def test_main_finds_env_file(mock_find_env_file, mock_subprocess, mock_is_uv_ava
     assert mock_find_env_file.as_posix() in cmd
 
 
-def test_main_passes_args_to_uv(mock_find_env_file, mock_subprocess, mock_is_uv_available):
+def test_main_passes_args_to_uv(
+    mock_find_env_file, mock_subprocess, mock_is_uv_available
+):
     """Arguments are passed through to uv."""
-    with patch("sys.argv", ["uve", "add", "requests", "--dev"]), pytest.raises(
-        SystemExit
-    ) as exc_info:
+    with (
+        patch("sys.argv", ["uve", "add", "requests", "--dev"]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
         main()
 
     assert exc_info.value.code == 0
@@ -88,7 +95,9 @@ def test_main_passes_args_to_uv(mock_find_env_file, mock_subprocess, mock_is_uv_
     assert "--dev" in cmd
 
 
-def test_main_forwards_exit_code(mock_find_env_file, mock_subprocess, mock_is_uv_available):
+def test_main_forwards_exit_code(
+    mock_find_env_file, mock_subprocess, mock_is_uv_available
+):
     """Exit code from uv is forwarded."""
     # Mock uv returning exit code 42
     mock_result = MagicMock()
@@ -126,15 +135,25 @@ def test_main_constructs_correct_command(
         main()
 
     cmd = mock_subprocess.call_args[0][0]
-    expected_prefix = ["uv", "run", "--env-file", mock_find_env_file.as_posix(), "--", "uv"]
+    expected_prefix = [
+        "uv",
+        "run",
+        "--env-file",
+        mock_find_env_file.as_posix(),
+        "--",
+        "uv",
+    ]
     assert cmd[: len(expected_prefix)] == expected_prefix
     assert cmd[len(expected_prefix) :] == ["add", "requests"]
 
 
-def test_main_with_multiple_args(mock_find_env_file, mock_subprocess, mock_is_uv_available):
+def test_main_with_multiple_args(
+    mock_find_env_file, mock_subprocess, mock_is_uv_available
+):
     """Works with multiple arguments."""
-    with patch("sys.argv", ["uve", "run", "python", "-c", "print('hello')"]), pytest.raises(
-        SystemExit
+    with (
+        patch("sys.argv", ["uve", "run", "python", "-c", "print('hello')"]),
+        pytest.raises(SystemExit),
     ):
         main()
 
@@ -157,7 +176,9 @@ def test_main_with_flags(mock_find_env_file, mock_subprocess, mock_is_uv_availab
 # Tests for Environment Variables
 
 
-def test_main_sets_home_on_windows(mock_find_env_file, mock_subprocess, mock_is_uv_available):
+def test_main_sets_home_on_windows(
+    mock_find_env_file, mock_subprocess, mock_is_uv_available
+):
     """On Windows, HOME is set if missing."""
     with (
         patch("sys.platform", "win32"),
@@ -172,11 +193,15 @@ def test_main_sets_home_on_windows(mock_find_env_file, mock_subprocess, mock_is_
     assert env["HOME"] == "C:\\Users\\test"
 
 
-def test_main_preserves_existing_home(mock_find_env_file, mock_subprocess, mock_is_uv_available):
+def test_main_preserves_existing_home(
+    mock_find_env_file, mock_subprocess, mock_is_uv_available
+):
     """Existing HOME variable is not overridden."""
     with (
         patch("sys.platform", "win32"),
-        patch.dict(os.environ, {"HOME": "/custom/home", "USERPROFILE": "C:\\Users\\test"}),
+        patch.dict(
+            os.environ, {"HOME": "/custom/home", "USERPROFILE": "C:\\Users\\test"}
+        ),
         patch("sys.argv", ["uve", "sync"]),
         pytest.raises(SystemExit),
     ):
@@ -202,7 +227,9 @@ def test_main_windows_home_from_userprofile(
     assert env["HOME"] == "C:\\Users\\testuser"
 
 
-def test_main_windows_home_fallback(mock_find_env_file, mock_subprocess, mock_is_uv_available):
+def test_main_windows_home_fallback(
+    mock_find_env_file, mock_subprocess, mock_is_uv_available
+):
     """On Windows, falls back to expanduser if USERPROFILE missing."""
     with (
         patch("sys.platform", "win32"),
@@ -300,15 +327,18 @@ def test_main_keyboard_interrupt(mock_find_env_file, mock_is_uv_available):
     assert exc_info.value.code == 130
 
 
-def test_main_uv_command_fails(mock_find_env_file, mock_subprocess, mock_is_uv_available):
+def test_main_uv_command_fails(
+    mock_find_env_file, mock_subprocess, mock_is_uv_available
+):
     """Forwards non-zero exit code from uv."""
     mock_result = MagicMock()
     mock_result.returncode = 1
     mock_subprocess.return_value = mock_result
 
-    with patch("sys.argv", ["uve", "add", "nonexistent"]), pytest.raises(
-        SystemExit
-    ) as exc_info:
+    with (
+        patch("sys.argv", ["uve", "add", "nonexistent"]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
         main()
 
     assert exc_info.value.code == 1
@@ -382,7 +412,9 @@ def test_main_does_not_expand_env_file_vars(
     """Variables in .env.uve are NOT expanded by uve (left to uv)."""
     env_file = tmp_path / ".env.uve"
     # Write file with ${HOME} variable
-    env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_12345678\n")
+    env_file.write_text(
+        "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_12345678\n"
+    )
 
     with (
         patch("prime_uve.uve.wrapper.find_env_file_strict", return_value=env_file),

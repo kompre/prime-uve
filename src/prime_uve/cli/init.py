@@ -1,6 +1,5 @@
 """Initialize project with external venv management."""
 
-
 import click
 
 from prime_uve.cli.output import confirm, echo, info, success
@@ -9,7 +8,11 @@ from prime_uve.core.env_file import (
     read_env_file,
     update_env_file_preserve_format,
 )
-from prime_uve.core.paths import expand_path_variables, generate_hash, generate_venv_path
+from prime_uve.core.paths import (
+    expand_path_variables,
+    generate_hash,
+    generate_venv_path,
+)
 from prime_uve.core.project import find_project_root, get_project_metadata
 
 
@@ -75,8 +78,14 @@ def init_command(
         new_venv = generate_venv_path(project_root)
 
         if old_venv != new_venv and not yes:
-            other_vars_count = len([k for k in existing_vars.keys() if k != "UV_PROJECT_ENVIRONMENT"])
-            preservation_note = f"\n  {other_vars_count} other variable(s) will be preserved" if other_vars_count > 0 else ""
+            other_vars_count = len(
+                [k for k in existing_vars.keys() if k != "UV_PROJECT_ENVIRONMENT"]
+            )
+            preservation_note = (
+                f"\n  {other_vars_count} other variable(s) will be preserved"
+                if other_vars_count > 0
+                else ""
+            )
 
             if not confirm(
                 f"⚠ Warning: Forcing reinitialization\n"
@@ -106,7 +115,9 @@ def init_command(
     # 6. Dry run output
     if dry_run:
         echo(f"[DRY RUN] Would initialize project: {project_name}")
-        echo(f"[DRY RUN] Would create: .env.uve with UV_PROJECT_ENVIRONMENT={venv_path}")
+        echo(
+            f"[DRY RUN] Would create: .env.uve with UV_PROJECT_ENVIRONMENT={venv_path}"
+        )
         echo(f"[DRY RUN] Would add cache entry: {project_root} -> {venv_path}")
         return
 

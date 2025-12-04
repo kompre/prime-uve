@@ -255,7 +255,9 @@ class TestExpandPathVariables:
 
         assert str(expanded).startswith("/custom/home")
 
-    @patch.dict(os.environ, {"USERPROFILE": "C:\\custom\\profile", "HOME": ""}, clear=True)
+    @patch.dict(
+        os.environ, {"USERPROFILE": "C:\\custom\\profile", "HOME": ""}, clear=True
+    )
     @patch("sys.platform", "win32")
     def test_uses_userprofile_on_windows(self):
         """On Windows, uses USERPROFILE if HOME not set."""
