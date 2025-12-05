@@ -26,13 +26,13 @@ def mock_cache(tmp_path):
     """Mock cache with test data."""
     cache_data = {
         str(tmp_path / "project1"): {
-            "venv_path": "${HOME}/prime-uve/venvs/project1_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/project1_abc123",
             "project_name": "project1",
             "path_hash": "abc123",
             "created_at": "2025-12-01T10:00:00Z",
         },
         str(tmp_path / "project2"): {
-            "venv_path": "${HOME}/prime-uve/venvs/project2_def456",
+            "venv_path": "${HOME}/.prime-uve/venvs/project2_def456",
             "project_name": "project2",
             "path_hash": "def456",
             "created_at": "2025-12-02T11:00:00Z",
@@ -50,7 +50,7 @@ class TestValidateProjectMapping:
         project_path = tmp_path / "test_project"
         project_path.mkdir()
 
-        venv_path = "${HOME}/prime-uve/venvs/test_abc123"
+        venv_path = "${HOME}/.prime-uve/venvs/test_abc123"
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
 
@@ -76,8 +76,8 @@ class TestValidateProjectMapping:
         project_path = tmp_path / "test_project"
         project_path.mkdir()
 
-        cache_venv_path = "${HOME}/prime-uve/venvs/test_abc123"
-        env_venv_path = "${HOME}/prime-uve/venvs/test_xyz789"  # Different!
+        cache_venv_path = "${HOME}/.prime-uve/venvs/test_abc123"
+        env_venv_path = "${HOME}/.prime-uve/venvs/test_xyz789"  # Different!
 
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={env_venv_path}\n")
@@ -105,7 +105,7 @@ class TestValidateProjectMapping:
         # No .env.uve file created
 
         cache_entry = {
-            "venv_path": "${HOME}/prime-uve/venvs/test_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/test_abc123",
             "project_name": "test",
             "path_hash": "abc123",
             "created_at": "2025-12-01T10:00:00Z",
@@ -128,7 +128,7 @@ class TestValidateProjectMapping:
         env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/test\n")
 
         cache_entry = {
-            "venv_path": "${HOME}/prime-uve/venvs/test_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/test_abc123",
             "project_name": "test",
             "path_hash": "abc123",
             "created_at": "2025-12-01T10:00:00Z",
@@ -263,7 +263,7 @@ class TestListCommandCLI:
         project_path = tmp_path / "test_project"
         project_path.mkdir()
 
-        venv_path = "${HOME}/prime-uve/venvs/test_abc123"
+        venv_path = "${HOME}/.prime-uve/venvs/test_abc123"
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
 
@@ -295,7 +295,7 @@ class TestListCommandCLI:
         # Setup valid project
         valid_project = tmp_path / "valid_project"
         valid_project.mkdir()
-        valid_venv = "${HOME}/prime-uve/venvs/valid_abc123"
+        valid_venv = "${HOME}/.prime-uve/venvs/valid_abc123"
         (valid_project / ".env.uve").write_text(
             f"UV_PROJECT_ENVIRONMENT={valid_venv}\n"
         )
@@ -314,7 +314,7 @@ class TestListCommandCLI:
                 "created_at": "2025-12-01T10:00:00Z",
             },
             str(orphan_project): {
-                "venv_path": "${HOME}/prime-uve/venvs/orphan_def456",
+                "venv_path": "${HOME}/.prime-uve/venvs/orphan_def456",
                 "project_name": "orphan_project",
                 "path_hash": "def456",
                 "created_at": "2025-12-02T11:00:00Z",
@@ -339,7 +339,7 @@ class TestListCommandCLI:
         # Setup
         valid_project = tmp_path / "valid"
         valid_project.mkdir()
-        valid_venv = "${HOME}/prime-uve/venvs/valid_abc"
+        valid_venv = "${HOME}/.prime-uve/venvs/valid_abc"
         (valid_project / ".env.uve").write_text(
             f"UV_PROJECT_ENVIRONMENT={valid_venv}\n"
         )
@@ -357,7 +357,7 @@ class TestListCommandCLI:
                 "created_at": "2025-12-01T10:00:00Z",
             },
             str(orphan_project): {
-                "venv_path": "${HOME}/prime-uve/venvs/orphan_def",
+                "venv_path": "${HOME}/.prime-uve/venvs/orphan_def",
                 "project_name": "orphan",
                 "path_hash": "def",
                 "created_at": "2025-12-02T11:00:00Z",
@@ -380,7 +380,7 @@ class TestListCommandCLI:
         # Setup valid project
         project = tmp_path / "test"
         project.mkdir()
-        venv = "${HOME}/prime-uve/venvs/test_abc"
+        venv = "${HOME}/.prime-uve/venvs/test_abc"
         (project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={venv}\n")
 
         # Mock cache
@@ -409,7 +409,7 @@ class TestListCommandCLI:
         # Setup
         project = tmp_path / "test"
         project.mkdir()
-        venv = "${HOME}/prime-uve/venvs/test_abc123"
+        venv = "${HOME}/.prime-uve/venvs/test_abc123"
         (project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={venv}\n")
 
         # Mock cache
@@ -440,7 +440,7 @@ class TestListCommandCLI:
         # Setup
         project = tmp_path / "test"
         project.mkdir()
-        venv = "${HOME}/prime-uve/venvs/test_abc"
+        venv = "${HOME}/.prime-uve/venvs/test_abc"
         (project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={venv}\n")
 
         # Mock cache
@@ -476,7 +476,7 @@ class TestListCommandCLI:
         # Setup
         project = tmp_path / "myproject"
         project.mkdir()
-        venv = "${HOME}/prime-uve/venvs/myproject_abc"
+        venv = "${HOME}/.prime-uve/venvs/myproject_abc"
         (project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={venv}\n")
 
         mock_cache_instance = Mock()

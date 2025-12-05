@@ -60,7 +60,7 @@ prime-uve/
   "version": "1.0",
   "venvs": {
     "/absolute/path/to/project": {
-      "venv_path": "${HOME}/prime-uve/venvs/myproject_a1b2c3d4",
+      "venv_path": "${HOME}/.prime-uve/venvs/myproject_a1b2c3d4",
       "venv_path_expanded": "/home/user/prime-uve/venvs/myproject_a1b2c3d4",
       "project_name": "myproject",
       "path_hash": "a1b2c3d4",
@@ -87,7 +87,7 @@ prime-uve/
 
 ### 2. Path Generation and Hashing
 
-**Venv Path Format**: `${HOME}/prime-uve/venvs/{project_name}_{hash}`
+**Venv Path Format**: `${HOME}/.prime-uve/venvs/{project_name}_{hash}`
 
 Where:
 - **Always use `${HOME}`** (cross-platform compatibility - works on Windows, macOS, Linux)
@@ -96,7 +96,7 @@ Where:
 
 **Example path in .env.uve** (same on all platforms):
 ```bash
-UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/myproject_a1b2c3d4
+UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/myproject_a1b2c3d4
 ```
 
 **Windows Compatibility**: `uve` wrapper ensures `HOME` environment variable is set on Windows:
@@ -151,7 +151,7 @@ def find_env_file(start_path: Path = None) -> Path | None:
 **File Format**:
 ```bash
 # .env.uve - SAME on all platforms (Windows, macOS, Linux)
-UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/myproject_a1b2c3d4
+UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/myproject_a1b2c3d4
 ```
 
 **Critical Design Constraint**: The path MUST use expandable variables (not absolute paths) to support the primary use case:
@@ -240,7 +240,7 @@ prime-uve
 **Output**:
 ```
 ✓ Project: myproject
-✓ Venv path: ${HOME}/prime-uve/venvs/myproject_a1b2c3d4
+✓ Venv path: ${HOME}/.prime-uve/venvs/myproject_a1b2c3d4
 ✓ Created .env.uve
 ✓ Initialized venv at /home/username/prime-uve/venvs/myproject_a1b2c3d4
 ```
@@ -338,7 +338,7 @@ another-project         ~/prime-uve/venvs/anoth...    ✗ Orphan (can prune)
 **Output Examples**:
 ```bash
 # Bash/Zsh - exports all .env.uve vars, then activates
-export UV_PROJECT_ENVIRONMENT="${HOME}/prime-uve/venvs/myproject_a1b2c3d4"
+export UV_PROJECT_ENVIRONMENT="${HOME}/.prime-uve/venvs/myproject_a1b2c3d4"
 export OTHER_VAR="value"
 source /home/user/prime-uve/venvs/myproject_a1b2c3d4/bin/activate
 
@@ -349,7 +349,7 @@ source /home/user/prime-uve/venvs/myproject_a1b2c3d4/bin/activate.fish
 
 # PowerShell - uses ${HOME} (not ${env:USERPROFILE}) for cross-platform compatibility
 $env:HOME = $env:USERPROFILE  # Ensure HOME is set
-$env:UV_PROJECT_ENVIRONMENT="${HOME}/prime-uve/venvs/myproject_a1b2c3d4"
+$env:UV_PROJECT_ENVIRONMENT="${HOME}/.prime-uve/venvs/myproject_a1b2c3d4"
 $env:OTHER_VAR="value"
 & C:\Users\user\prime-uve\venvs\myproject_a1b2c3d4\Scripts\Activate.ps1
 ```

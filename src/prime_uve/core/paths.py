@@ -87,7 +87,7 @@ def generate_venv_path(project_path: Path) -> str:
 
     Creates a path string using ${HOME} variable (not expanded) so the same
     .env.uve file works across different users and platforms. The path format
-    is: ${HOME}/prime-uve/venvs/{project_name}_{hash}
+    is: ${HOME}/.prime-uve/venvs/{project_name}_{hash}
 
     Args:
         project_path: Absolute path to the project directory
@@ -97,13 +97,13 @@ def generate_venv_path(project_path: Path) -> str:
 
     Example:
         >>> generate_venv_path(Path("/mnt/share/my-project"))
-        '${HOME}/prime-uve/venvs/my-project_a1b2c3d4'
+        '${HOME}/.prime-uve/venvs/my-project_a1b2c3d4'
     """
     project_name = get_project_name(project_path)
     path_hash = generate_hash(project_path)
 
     # Always use ${HOME} for cross-platform compatibility
-    return f"${{HOME}}/prime-uve/venvs/{project_name}_{path_hash}"
+    return f"${{HOME}}/.prime-uve/venvs/{project_name}_{path_hash}"
 
 
 def expand_path_variables(path: str) -> Path:
@@ -124,9 +124,9 @@ def expand_path_variables(path: str) -> Path:
         pathlib.Path with ${HOME} expanded to actual directory
 
     Example:
-        >>> expand_path_variables("${HOME}/prime-uve/venvs/myproject")
-        Path('/home/user/prime-uve/venvs/myproject')  # On Linux
-        Path('C:/Users/user/prime-uve/venvs/myproject')  # On Windows
+        >>> expand_path_variables("${HOME}/.prime-uve/venvs/myproject")
+        Path('/home/user/.prime-uve/venvs/myproject')  # On Linux
+        Path('C:/Users/user/.prime-uve/venvs/myproject')  # On Windows
     """
     # Determine home directory based on platform
     if sys.platform == "win32":
@@ -165,9 +165,9 @@ def get_venv_base_dir() -> Path:
     """Get the base directory where all venvs are stored.
 
     Returns the expanded path to the venv base directory:
-    ${HOME}/prime-uve/venvs -> /home/user/prime-uve/venvs
+    ${HOME}/.prime-uve/venvs -> /home/user/.prime-uve/venvs
 
     Returns:
         Path to venv base directory
     """
-    return expand_path_variables("${HOME}/prime-uve/venvs")
+    return expand_path_variables("${HOME}/.prime-uve/venvs")

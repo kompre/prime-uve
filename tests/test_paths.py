@@ -192,7 +192,7 @@ class TestGenerateVenvPath:
 
         venv_path = generate_venv_path(project_path)
 
-        assert venv_path.startswith("${HOME}/prime-uve/venvs/")
+        assert venv_path.startswith("${HOME}/.prime-uve/venvs/")
         assert "my-project_" in venv_path
 
     def test_not_expanded(self, tmp_path):
@@ -235,7 +235,7 @@ class TestExpandPathVariables:
 
     def test_expands_home(self, tmp_path):
         """${HOME} expands to actual home directory."""
-        path_str = "${HOME}/prime-uve/venvs/myproject"
+        path_str = "${HOME}/.prime-uve/venvs/myproject"
 
         expanded = expand_path_variables(path_str)
 
@@ -249,7 +249,7 @@ class TestExpandPathVariables:
         if sys.platform == "win32":
             pytest.skip("Unix-specific test")
 
-        path_str = "${HOME}/prime-uve/venvs/myproject"
+        path_str = "${HOME}/.prime-uve/venvs/myproject"
 
         expanded = expand_path_variables(path_str)
 
@@ -261,7 +261,7 @@ class TestExpandPathVariables:
     @patch("sys.platform", "win32")
     def test_uses_userprofile_on_windows(self):
         """On Windows, uses USERPROFILE if HOME not set."""
-        path_str = "${HOME}/prime-uve/venvs/myproject"
+        path_str = "${HOME}/.prime-uve/venvs/myproject"
 
         expanded = expand_path_variables(path_str)
 
@@ -272,7 +272,7 @@ class TestExpandPathVariables:
     @patch("sys.platform", "win32")
     def test_uses_home_on_windows_if_set(self):
         """On Windows, prefers HOME if it's set."""
-        path_str = "${HOME}/prime-uve/venvs/myproject"
+        path_str = "${HOME}/.prime-uve/venvs/myproject"
 
         expanded = expand_path_variables(path_str)
 
@@ -280,7 +280,7 @@ class TestExpandPathVariables:
 
     def test_returns_path_object(self):
         """Returns a pathlib.Path object."""
-        path_str = "${HOME}/prime-uve/venvs/myproject"
+        path_str = "${HOME}/.prime-uve/venvs/myproject"
 
         expanded = expand_path_variables(path_str)
 
@@ -347,7 +347,7 @@ class TestIntegration:
         venv_path = generate_venv_path(project_path)
 
         # Verify format
-        assert venv_path.startswith("${HOME}/prime-uve/venvs/")
+        assert venv_path.startswith("${HOME}/.prime-uve/venvs/")
         assert "my-awesome-project_" in venv_path
 
         # Expand for local use

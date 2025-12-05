@@ -16,7 +16,7 @@ def mock_env_file(tmp_path):
     """Create a mock .env.uve file."""
     env_file = tmp_path / ".env.uve"
     env_file.write_text(
-        "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_12345678\n"
+        "UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/test_12345678\n"
     )
     return env_file
 
@@ -416,7 +416,7 @@ def test_main_does_not_expand_env_file_vars(
     env_file = tmp_path / ".env.uve"
     # Write file with ${HOME} variable
     env_file.write_text(
-        "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_12345678\n"
+        "UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/test_12345678\n"
     )
 
     with (

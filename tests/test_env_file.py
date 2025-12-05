@@ -198,10 +198,10 @@ def test_read_env_file_basic(tmp_path):
 def test_read_env_file_preserves_variables(tmp_path):
     """Variables like ${HOME} are NOT expanded."""
     env_file = tmp_path / ".env.uve"
-    env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_abc123\n")
+    env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/test_abc123\n")
 
     result = read_env_file(env_file)
-    assert result["UV_PROJECT_ENVIRONMENT"] == "${HOME}/prime-uve/venvs/test_abc123"
+    assert result["UV_PROJECT_ENVIRONMENT"] == "${HOME}/.prime-uve/venvs/test_abc123"
 
 
 def test_read_env_file_ignores_comments(tmp_path):
@@ -296,13 +296,13 @@ def test_write_env_file_basic(tmp_path):
 def test_write_env_file_preserves_variables(tmp_path):
     """Variables like ${HOME} are written as-is."""
     env_file = tmp_path / ".env.uve"
-    env_vars = {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/test_abc123"}
+    env_vars = {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/test_abc123"}
 
     write_env_file(env_file, env_vars)
 
     content = env_file.read_text()
     assert "${HOME}" in content
-    assert "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_abc123" in content
+    assert "UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/test_abc123" in content
 
 
 def test_write_env_file_sorted_keys(tmp_path):
@@ -425,17 +425,17 @@ def test_update_env_file_preserves_order(tmp_path):
 
 def test_get_venv_path_no_expand():
     """Returns path with variables unexpanded."""
-    env_vars = {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/test_abc123"}
+    env_vars = {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/test_abc123"}
 
     result = get_venv_path(env_vars, expand=False)
 
-    assert result == "${HOME}/prime-uve/venvs/test_abc123"
+    assert result == "${HOME}/.prime-uve/venvs/test_abc123"
     assert isinstance(result, str)
 
 
 def test_get_venv_path_expand():
     """Expands ${HOME} when expand=True."""
-    env_vars = {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/test_abc123"}
+    env_vars = {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/test_abc123"}
 
     result = get_venv_path(env_vars, expand=True)
 
@@ -488,12 +488,12 @@ def test_full_workflow_find_read_write(tmp_path):
 
     # Write initial value
     write_env_file(
-        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/proj_abc123"}
+        env_file, {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/proj_abc123"}
     )
 
     # Read back
     env_vars = read_env_file(env_file)
-    assert env_vars["UV_PROJECT_ENVIRONMENT"] == "${HOME}/prime-uve/venvs/proj_abc123"
+    assert env_vars["UV_PROJECT_ENVIRONMENT"] == "${HOME}/.prime-uve/venvs/proj_abc123"
 
     # Update
     update_env_file(env_file, {"PYTHONPATH": "/some/path"})
@@ -501,14 +501,14 @@ def test_full_workflow_find_read_write(tmp_path):
     # Read again
     env_vars = read_env_file(env_file)
     assert len(env_vars) == 2
-    assert env_vars["UV_PROJECT_ENVIRONMENT"] == "${HOME}/prime-uve/venvs/proj_abc123"
+    assert env_vars["UV_PROJECT_ENVIRONMENT"] == "${HOME}/.prime-uve/venvs/proj_abc123"
     assert env_vars["PYTHONPATH"] == "/some/path"
 
 
 def test_cross_platform_path_preserved(tmp_path):
     """${HOME} syntax preserved through read/write cycle."""
     env_file = tmp_path / ".env.uve"
-    original = {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/test_abc123"}
+    original = {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/test_abc123"}
 
     # Write
     write_env_file(env_file, original)
@@ -523,14 +523,14 @@ def test_cross_platform_path_preserved(tmp_path):
     final = read_env_file(env_file)
 
     # Should still have ${HOME}, not expanded
-    assert final["UV_PROJECT_ENVIRONMENT"] == "${HOME}/prime-uve/venvs/test_abc123"
+    assert final["UV_PROJECT_ENVIRONMENT"] == "${HOME}/.prime-uve/venvs/test_abc123"
 
 
 def test_multiple_variables(tmp_path):
     """Multiple environment variables handled correctly."""
     env_file = tmp_path / ".env.uve"
     env_vars = {
-        "UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/test_abc123",
+        "UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/test_abc123",
         "PYTHONPATH": "/some/path",
         "CUSTOM_VAR": "custom_value",
         "ANOTHER_VAR": "${HOME}/another/path",
@@ -681,7 +681,7 @@ def test_trailing_whitespace_in_value(tmp_path):
 
 def test_get_venv_path_with_expanded_actual_path():
     """Expanded path points to a real location under home directory."""
-    env_vars = {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/test_abc123"}
+    env_vars = {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/test_abc123"}
 
     result = get_venv_path(env_vars, expand=True)
 

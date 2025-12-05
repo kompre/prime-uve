@@ -26,13 +26,13 @@ def mock_cache(tmp_path):
     """Mock cache with test data."""
     cache_data = {
         str(tmp_path / "project1"): {
-            "venv_path": "${HOME}/prime-uve/venvs/project1_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/project1_abc123",
             "project_name": "project1",
             "path_hash": "abc123",
             "created_at": "2025-12-01T10:00:00Z",
         },
         str(tmp_path / "project2"): {
-            "venv_path": "${HOME}/prime-uve/venvs/project2_def456",
+            "venv_path": "${HOME}/.prime-uve/venvs/project2_def456",
             "project_name": "project2",
             "path_hash": "def456",
             "created_at": "2025-12-02T11:00:00Z",
@@ -114,7 +114,7 @@ class TestHelperFunctions:
         project_path.mkdir()
 
         cache_entry = {
-            "venv_path": "${HOME}/prime-uve/venvs/project_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/project_abc123",
             "project_name": "project",
         }
 
@@ -127,11 +127,11 @@ class TestHelperFunctions:
 
         env_file = project_path / ".env.uve"
         env_file.write_text(
-            "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/different_xyz789\n"
+            "UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/different_xyz789\n"
         )
 
         cache_entry = {
-            "venv_path": "${HOME}/prime-uve/venvs/project_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/project_abc123",
             "project_name": "project",
         }
 
@@ -142,7 +142,7 @@ class TestHelperFunctions:
         project_path = tmp_path / "project"
         project_path.mkdir()
 
-        venv_path = "${HOME}/prime-uve/venvs/project_abc123"
+        venv_path = "${HOME}/.prime-uve/venvs/project_abc123"
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
 
@@ -211,7 +211,7 @@ class TestPruneCommand:
         mock_cache = Mock()
         mock_cache.list_all.return_value = {
             str(tmp_path / "project1"): {
-                "venv_path": "${HOME}/prime-uve/venvs/project1_abc123",
+                "venv_path": "${HOME}/.prime-uve/venvs/project1_abc123",
                 "project_name": "project1",
                 "path_hash": "abc123",
                 "created_at": "2025-12-01T10:00:00Z",
@@ -325,7 +325,7 @@ class TestPruneOrphan:
         project_path = tmp_path / "project1"
         project_path.mkdir()
 
-        venv_path = "${HOME}/prime-uve/venvs/project1_abc123"
+        venv_path = "${HOME}/.prime-uve/venvs/project1_abc123"
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
 

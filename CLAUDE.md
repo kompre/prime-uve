@@ -32,7 +32,7 @@ The `.env.uve` file is critical to this project's operation. The lookup logic is
 
 The file should contain:
 ```
-UV_PROJECT_ENVIRONMENT="$HOME/prime-uve/venvs/<project_name>_<short path hash>"
+UV_PROJECT_ENVIRONMENT="$HOME/.prime-uve/venvs/<project_name>_<short path hash>"
 ```
 
 Path requirements:

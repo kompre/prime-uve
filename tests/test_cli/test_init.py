@@ -56,7 +56,7 @@ def test_init_creates_env_file(runner, mock_project, cache_file, monkeypatch):
 
         content = env_file.read_text()
         assert "UV_PROJECT_ENVIRONMENT=" in content
-        assert "${HOME}/prime-uve/venvs/" in content
+        assert "${HOME}/.prime-uve/venvs/" in content
         assert "test-project" in content or "test_project" in content
 
 
@@ -226,7 +226,7 @@ def test_init_force_preserves_format(runner, mock_project, cache_file, monkeypat
         env_file.write_text(
             """# Database config
 DATABASE_URL=postgres://localhost
-UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_old
+UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/test_old
 
 # API keys
 API_KEY=secret
@@ -260,7 +260,7 @@ def test_init_force_shows_confirmation(runner, mock_project, cache_file, monkeyp
         # Manually change the venv path in .env.uve to create a different path
         env_file = mock_project / ".env.uve"
         env_file.write_text(
-            "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/old_venv_path\n"
+            "UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/old_venv_path\n"
         )
 
         # Force without --yes should prompt (we'll cancel it)

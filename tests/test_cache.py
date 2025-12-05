@@ -2,6 +2,7 @@
 
 import json
 import multiprocessing
+import shutil
 import sys
 import time
 
@@ -267,6 +268,10 @@ def test_validate_mapping_valid(tmp_path):
     assert result.status == "valid"
     assert result.issues == []
 
+    # Cleanup: remove the venv directory we created
+    if venv_expanded.exists():
+        shutil.rmtree(venv_expanded)
+
 
 def test_validate_mapping_project_missing(tmp_path):
     """Validation detects missing project directory."""
@@ -339,6 +344,10 @@ def test_validate_mapping_env_file_missing(tmp_path):
     assert result.status == "orphaned"
     assert any(".env.uve file does not exist" in issue for issue in result.issues)
 
+    # Cleanup: remove the venv directory we created
+    if venv_expanded.exists():
+        shutil.rmtree(venv_expanded)
+
 
 def test_validate_mapping_path_mismatch(tmp_path):
     """Validation detects when .env.uve path differs from cache."""
@@ -360,7 +369,7 @@ def test_validate_mapping_path_mismatch(tmp_path):
 
     # Create .env.uve with DIFFERENT path
     env_file = project_path / ".env.uve"
-    different_path = "${HOME}/prime-uve/venvs/different_path"
+    different_path = "${HOME}/.prime-uve/venvs/different_path"
     env_file.write_text(f'UV_PROJECT_ENVIRONMENT="{different_path}"')
 
     cache.add_mapping(project_path, venv_path, project_name, path_hash)
@@ -370,6 +379,10 @@ def test_validate_mapping_path_mismatch(tmp_path):
     assert result.has_mismatch
     assert result.status == "mismatch"
     assert any("mismatch" in issue for issue in result.issues)
+
+    # Cleanup: remove the venv directory we created
+    if venv_expanded.exists():
+        shutil.rmtree(venv_expanded)
 
 
 def test_validate_all(tmp_path):
