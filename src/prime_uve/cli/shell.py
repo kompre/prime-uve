@@ -120,6 +120,19 @@ def shell_command(
         if sys.platform == "win32" and "HOME" not in new_env:
             new_env["HOME"] = new_env.get("USERPROFILE", "")
 
+        # Set prompt to show venv name
+        venv_name = venv_path_expanded.name
+
+        # Set PS1 for bash/zsh to include venv name
+        # Keep existing PS1 if set, otherwise use a default
+        if "PS1" in new_env:
+            # Prepend venv name if not already present
+            if venv_name not in new_env["PS1"]:
+                new_env["PS1"] = f"({venv_name}) {new_env['PS1']}"
+        else:
+            # Set a default PS1 with venv name
+            new_env["PS1"] = f"({venv_name}) \\u@\\h:\\w\\$ "
+
         # 5. Determine shell to spawn
         if shell_override:
             shell_cmd = shell_override
