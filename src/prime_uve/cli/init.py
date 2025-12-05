@@ -159,6 +159,7 @@ def init_command(
         success(f"Project: {project_name}")
         success(f"Project root: {project_root}")
         success(f"Venv path: {venv_path}")
+        info(f"  Expanded: {venv_path_expanded}")
         if env_file_existed:
             success("Updated .env.uve")
         else:
