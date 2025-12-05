@@ -696,10 +696,19 @@ Estimated effort: 3-4 hours including tests and documentation.
 ### 2025-12-05 - Implementation Complete
 - Implemented `src/prime_uve/utils/shell.py` with shell detection and command generation
 - Implemented `src/prime_uve/cli/activate.py` with full activate command logic
-- Registered activate command in `src/prime_uve/cli/main.py`
+- Implemented `src/prime_uve/cli/shell.py` with interactive shell spawning
+- Registered both commands in `src/prime_uve/cli/main.py`
 - Created comprehensive test suites:
   - 32 tests for shell utilities (test_utils/test_shell.py)
   - 18 tests for activate command (test_cli/test_activate.py)
-- All tests passing: 346 tests total, 8 skipped
+  - 14 tests for shell command (test_cli/test_shell.py)
+- All tests passing: 352 tests total, 8 skipped
 - Updated CLAUDE.md with improved task workflow documentation
 - Ready for PR
+
+### 2025-12-05 - Added `prime-uve shell` Command
+- Added interactive shell spawning functionality
+- `prime-uve shell` spawns a new shell with venv activated and all env vars loaded
+- No `eval` required - just run `prime-uve shell` and you're in
+- Similar UX to `pipenv shell` or `poetry shell`
+- Type `exit` to leave the activated shell
