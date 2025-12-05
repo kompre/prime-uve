@@ -484,3 +484,45 @@ def test_configure_vscode_preserves_workspace_with_comments(
     data = json.loads(workspace.read_text())
     assert "settings" in data
     assert "python.defaultInterpreterPath" in data["settings"]
+
+
+def test_configure_vscode_uses_environment_variables(runner, mock_project, monkeypatch, tmp_path):
+    """Test that interpreter path uses environment variables for portability."""
+    monkeypatch.chdir(mock_project)
+
+    # Update .env.uve to use ${HOME} variable
+    env_file = mock_project / ".env.uve"
+    venv_dir = tmp_path / "venvs" / "test_venv"
+
+    # Write with environment variable syntax
+    env_file.write_text('UV_PROJECT_ENVIRONMENT=${HOME}/custom/venvs/test_venv\n')
+
+    # Mock HOME environment variable to point to tmp_path
+    with monkeypatch.context() as m:
+        m.setenv("HOME", str(tmp_path))
+
+        # Venv should exist at the expanded path
+        actual_venv = tmp_path / "custom" / "venvs" / "test_venv"
+        actual_venv.mkdir(parents=True)
+        if sys.platform == "win32":
+            interpreter = actual_venv / "Scripts" / "python.exe"
+        else:
+            interpreter = actual_venv / "bin" / "python"
+        interpreter.parent.mkdir(parents=True, exist_ok=True)
+        interpreter.write_text("")
+
+        result = runner.invoke(cli, ["configure", "vscode", "--yes"])
+
+    assert result.exit_code == 0, f"Failed with: {result.output}"
+
+    # Check workspace file contains the variable form, not expanded path
+    workspace = mock_project / f"{mock_project.name}.code-workspace"
+    data = json.loads(workspace.read_text())
+    interpreter_path = data["settings"]["python.defaultInterpreterPath"]
+
+    # Should contain ${HOME} variable, not the expanded path
+    assert "${HOME}" in interpreter_path or "$HOME" in interpreter_path
+    assert "custom/venvs/test_venv" in interpreter_path
+
+    # Should NOT contain the expanded tmp_path
+    assert str(tmp_path) not in interpreter_path

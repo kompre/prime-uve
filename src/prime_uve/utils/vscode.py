@@ -136,12 +136,12 @@ def write_workspace(path: Path, data: dict) -> None:
         f.write("\n")  # Trailing newline
 
 
-def update_python_interpreter(workspace: dict, interpreter_path: Path) -> dict:
+def update_python_interpreter(workspace: dict, interpreter_path: str | Path) -> dict:
     """Update Python interpreter setting in workspace data.
 
     Args:
         workspace: Workspace data dict
-        interpreter_path: Path to Python interpreter
+        interpreter_path: Path to Python interpreter (can include env variables like ${HOME})
 
     Returns:
         Updated workspace data dict
@@ -154,12 +154,12 @@ def update_python_interpreter(workspace: dict, interpreter_path: Path) -> dict:
     return workspace
 
 
-def create_default_workspace(project_root: Path, interpreter_path: Path) -> dict:
+def create_default_workspace(project_root: Path, interpreter_path: str | Path) -> dict:
     """Create minimal workspace structure.
 
     Args:
         project_root: Path to project root
-        interpreter_path: Path to Python interpreter
+        interpreter_path: Path to Python interpreter (can include env variables like ${HOME})
 
     Returns:
         New workspace data dict

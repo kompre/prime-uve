@@ -19,10 +19,10 @@ from prime_uve.utils.vscode import (
 
 
 def _get_interpreter_path(venv_path: Path) -> Path:
-    """Get platform-specific Python interpreter path.
+    """Get platform-specific Python interpreter path (expanded).
 
     Args:
-        venv_path: Path to virtual environment
+        venv_path: Expanded path to virtual environment
 
     Returns:
         Path to Python interpreter executable
@@ -31,6 +31,28 @@ def _get_interpreter_path(venv_path: Path) -> Path:
         return venv_path / "Scripts" / "python.exe"
     else:
         return venv_path / "bin" / "python"
+
+
+def _get_interpreter_path_variable_form(venv_path_var: str) -> str:
+    """Get platform-specific Python interpreter path with environment variables.
+
+    This preserves environment variables like ${HOME} for cross-platform
+    compatibility in VS Code workspace files.
+
+    Args:
+        venv_path_var: Venv path with environment variables (e.g., ${HOME}/...)
+
+    Returns:
+        Interpreter path with environment variables preserved
+    """
+    # Normalize path separators and ensure no trailing slash
+    venv_path_var = venv_path_var.rstrip('/\\')
+
+    if sys.platform == "win32":
+        # Use forward slashes for consistency in VS Code
+        return f"{venv_path_var}/Scripts/python.exe"
+    else:
+        return f"{venv_path_var}/bin/python"
 
 
 def _prompt_workspace_choice(
@@ -135,14 +157,18 @@ def configure_vscode_command(
         )
 
     # 3. Determine interpreter path (platform-specific)
-    interpreter_path = _get_interpreter_path(venv_path_expanded)
+    # Use expanded path for validation
+    interpreter_path_expanded = _get_interpreter_path(venv_path_expanded)
 
-    if not interpreter_path.exists():
+    if not interpreter_path_expanded.exists():
         raise ValueError(
-            f"Python interpreter not found: {interpreter_path}\n"
+            f"Python interpreter not found: {interpreter_path_expanded}\n"
             f"Venv may be corrupted.\n\n"
             f"Run 'prime-uve init --force' to recreate."
         )
+
+    # Use variable form for workspace file (cross-platform compatibility)
+    interpreter_path = _get_interpreter_path_variable_form(venv_path_var)
 
     # 4. Find or create workspace file
     workspace_file: Path | None = None
