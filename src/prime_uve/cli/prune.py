@@ -65,6 +65,55 @@ def format_bytes(size: int) -> str:
         return f"{size_float:.1f} {units[unit_index]}"
 
 
+def display_venvs_to_remove(
+    venvs: list[dict],
+    mode_label: str,
+    total_size: int,
+    verbose: bool = False,
+) -> None:
+    """Display venvs that will be removed with consistent formatting.
+
+    Args:
+        venvs: List of venv dicts with at minimum 'project_name' key
+        mode_label: Label for the mode (e.g., "ALL", "valid", "orphaned")
+        total_size: Total disk space in bytes
+        verbose: Show detailed information
+    """
+    warning(f"Will remove {len(venvs)} {mode_label} venv(s)")
+    warning(f"Total disk space to free: {format_bytes(total_size)}")
+    echo("")
+
+    for v in venvs:
+        # Handle different dict structures
+        project_name = v.get("project_name", "<unknown>")
+        tracked_marker = ""
+
+        # Check if this venv has tracking info
+        if "tracked" in v:
+            tracked_marker = "" if v["tracked"] else " [untracked]"
+        elif "is_tracked" in v and not v["is_tracked"]:
+            tracked_marker = " [untracked]"
+
+        echo(f"  • {project_name}{tracked_marker}")
+
+        if verbose:
+            # Show project path if available
+            if "project_path" in v and v["project_path"]:
+                echo(f"    Project: {v['project_path']}")
+
+            # Show venv path
+            venv_path = v.get("venv_path_expanded") or v.get("venv_path")
+            if venv_path:
+                echo(f"    Venv:    {venv_path}")
+
+            # Show size
+            size = v.get("disk_usage") or v.get("size", 0)
+            if size > 0:
+                echo(f"    Size:    {format_bytes(size)}")
+
+    echo("")
+
+
 def scan_venv_directory() -> list[Path]:
     """
     Scan venv base directory for all venv directories.
@@ -246,16 +295,7 @@ def prune_all(
     total_size = sum(v["disk_usage"] for v in all_venvs)
 
     if not json_output:
-        warning(f"Will remove ALL {len(all_venvs)} venv(s)")
-        warning(f"Total disk space to free: {format_bytes(total_size)}")
-        echo("")
-        for v in all_venvs:
-            tracked_marker = "" if v["tracked"] else " [untracked]"
-            echo(f"  • {v['project_name']}{tracked_marker}")
-            if verbose:
-                echo(f"    Venv: {v['venv_path_expanded']}")
-                echo(f"    Size: {format_bytes(v['disk_usage'])}")
-        echo("")
+        display_venvs_to_remove(all_venvs, "ALL", total_size, verbose)
 
     # Confirm
     if not dry_run and not yes:
@@ -363,16 +403,7 @@ def prune_valid(
     total_size = sum(v["disk_usage"] for v in valid_venvs)
 
     if not json_output:
-        warning(f"Will remove {len(valid_venvs)} valid venv(s)")
-        warning(f"Total disk space to free: {format_bytes(total_size)}")
-        echo("")
-        for v in valid_venvs:
-            echo(f"  • {v['project_name']}")
-            if verbose:
-                echo(f"    Project: {v['project_path']}")
-                echo(f"    Venv:    {v['venv_path_expanded']}")
-                echo(f"    Size:    {format_bytes(v['disk_usage'])}")
-        echo("")
+        display_venvs_to_remove(valid_venvs, "valid", total_size, verbose)
 
     # Confirm
     if not dry_run:
@@ -480,13 +511,7 @@ def prune_orphan(
 
     # Show what will be removed
     if not json_output:
-        echo(f"Found {len(orphaned_venvs)} orphaned venv(s) to remove:")
-        echo("")
-        for item in orphaned_venvs:
-            echo(f"  - {item['project_name']} ({format_bytes(item['size'])})")
-        echo("")
-        echo(f"Total disk space to be freed: {format_bytes(total_size)}")
-        echo("")
+        display_venvs_to_remove(orphaned_venvs, "orphaned", total_size, verbose)
 
     # Confirm unless --yes
     if not yes and not dry_run:

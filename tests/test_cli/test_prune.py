@@ -22,6 +22,20 @@ def runner():
     return CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def mock_venv_base_dir_global(tmp_path):
+    """Automatically mock get_venv_base_dir to use temp directory for all tests.
+
+    This prevents tests from accidentally accessing or deleting real venvs.
+    """
+    test_venv_dir = tmp_path / ".prime-uve" / "venvs"
+    test_venv_dir.mkdir(parents=True, exist_ok=True)
+
+    # Patch get_venv_base_dir to return test directory
+    with patch("prime_uve.cli.prune.get_venv_base_dir", return_value=test_venv_dir):
+        yield test_venv_dir
+
+
 @pytest.fixture
 def mock_cache(tmp_path):
     """Mock cache with test data."""
