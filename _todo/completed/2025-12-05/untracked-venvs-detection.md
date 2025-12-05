@@ -281,3 +281,38 @@ Similar complexity to implementing a new prune mode (task 3.4 level).
 4. **Disk management**: Better control over disk usage
 5. **Trust**: System shows everything, not just cached items
 6. **Simplicity**: No new status category or command - just better orphan detection
+
+---
+
+## Completion Summary
+
+**Completed**: 2025-12-05
+
+### Implementation Status: ✅ COMPLETED
+
+The untracked venvs feature has been successfully implemented. Based on git commits:
+- d45b731: "list unknown venv as orphaned"
+- cadaaf1: "Simplify untracked venvs proposal: treat as orphans"
+- efb2a03: "Add task proposal: detect and clean untracked venvs"
+
+### What Was Implemented
+
+1. **Filesystem Scanning**: Added ability to scan venv directory for all venvs on disk
+2. **Untracked Detection**: Identify venvs not present in cache
+3. **Orphan Classification**: Treat untracked venvs as orphans (not as separate category)
+4. **List Command**: Display untracked venvs with `[!] Orphan` status and `<unknown>` project name
+5. **Prune Integration**: `prime-uve prune --orphan` now removes both cached orphans and untracked venvs
+
+### Design Decision
+
+Simplified approach: Treat untracked venvs as orphans rather than creating a new "untracked" status category. This keeps the mental model simple - if we don't know what project a venv belongs to (either because it's untracked or because the project is gone), it's orphaned.
+
+### Files Modified
+
+- `src/prime_uve/cli/list.py` - Added filesystem scanning and untracked detection
+- `src/prime_uve/cli/prune.py` - Enhanced orphan pruning to include untracked venvs
+- Test files updated accordingly
+
+### Outcome
+
+Users can now see all venvs consuming disk space (not just cached ones) and clean them up with the existing `prune --orphan` command. No new commands or status categories were added - just better orphan detection.
