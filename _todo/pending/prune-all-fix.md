@@ -541,4 +541,56 @@ Remove these valid venvs? [y/N]: y
 
 **Approved by**: User
 **Approval date**: 2025-12-05
-**Status**: Moving to pending phase
+**Status**: ✅ IMPLEMENTATION COMPLETE
+
+---
+
+## Implementation Summary
+
+**Implementation date**: 2025-12-05
+**Implemented by**: Haiku agent
+
+### Changes Made
+
+1. **src/prime_uve/cli/main.py**
+   - ✅ Added `--valid` flag to prune command
+   - ✅ Updated help text for all prune modes
+   - ✅ Updated mode validation
+
+2. **src/prime_uve/cli/prune.py**
+   - ✅ Implemented `prune_valid()` function
+     - Removes only valid venvs (cache matches .env.uve)
+     - Clears cache entries for removed venvs
+     - Respects `--yes` flag for confirmation
+   - ✅ Fixed `prune_all()` function
+     - Removes both cached AND untracked venvs
+     - Uses typed confirmation with `click.prompt()`
+     - Overrides `--yes` flag (always requires explicit "yes" input)
+     - Shows tracked vs untracked venvs in output
+   - ✅ Updated mode validation to include `valid` flag
+
+3. **tests/test_cli/test_prune.py**
+   - ✅ Added `TestPruneValid` class with 5 comprehensive tests
+   - ✅ Enhanced `TestPruneAll` with 4 new tests for untracked venvs
+   - ✅ Added mode validation tests for invalid combinations
+   - ✅ All 410 tests passing (39 in test_prune.py)
+
+### Test Results
+
+```
+410 tests passed (8 skipped)
+- test_prune_valid_empty_cache ✅
+- test_prune_valid_removes_only_valid_venvs ✅
+- test_prune_valid_clears_cache_entries ✅
+- test_prune_valid_respects_yes_flag ✅
+- test_prune_valid_dry_run ✅
+- test_prune_all_removes_untracked_venvs ✅
+- test_prune_all_requires_typed_confirmation ✅
+- test_prune_all_dry_run ✅
+- test_prune_command_all_valid_combination ✅
+- test_prune_command_valid_orphan_combination ✅
+```
+
+### Ready for Review and Commit
+
+All requirements met. Ready for user review and git commit.
