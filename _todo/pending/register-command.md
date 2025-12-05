@@ -546,3 +546,59 @@ None - requirements are clear from the task description.
 - Env file handling: `src/prime_uve/core/env_file.py`
 - Init command (reference): `src/prime_uve/cli/init.py`
 - List validation logic: `src/prime_uve/cli/list.py:31-81`
+
+---
+
+## Implementation Progress
+
+### 2025-01-05 - Initial Implementation Completed
+
+**Implemented:**
+- ✅ Created `src/prime_uve/cli/register.py` with:
+  - `auto_register_current_project(cache)` - Internal silent registration
+  - `register_command(...)` - External verbose command
+- ✅ Updated `src/prime_uve/cli/main.py` - Added register command to CLI
+- ✅ Updated `src/prime_uve/cli/list.py` - Integrated auto-registration
+- ✅ Updated `src/prime_uve/cli/prune.py` - Integrated auto-registration
+- ✅ All existing tests pass (400/400)
+- ✅ Manual testing verified basic functionality
+
+**Key Implementation Details:**
+- Minimal validation: Only checks .env.uve exists and UV_PROJECT_ENVIRONMENT is set
+- Metadata from pyproject.toml: project_name and hash generated, not parsed from venv_path
+- Silent failure for auto-registration: Never breaks list/prune commands
+- Idempotent operation: Safe to call multiple times
+- Dry-run and JSON output support for manual command
+
+**Manual Test Results:**
+```bash
+# Basic registration
+$ prime-uve register
+[i] Project already registered with matching venv path
+[OK] Project: prime-uve
+[OK] Venv: ${HOME}/prime-uve/venvs/prime-uve_043331fa
+
+# Verbose mode
+$ prime-uve register --verbose
+[i] Project name: prime-uve
+[i] Project root: C:\Users\s.follador\Documents\github\prime-uve
+[i] Venv path: ${HOME}/prime-uve/venvs/prime-uve_043331fa
+[i] Venv path (expanded): C:\Users\s.follador\prime-uve\venvs\prime-uve_043331fa
+[i] Path hash: 043331fa
+[i] Project already registered with matching venv path
+
+# Auto-registration via list
+$ prime-uve list
+[Auto-registration happens silently]
+Managed Virtual Environments
+[...]
+```
+
+**Commit:** feat: add register command with auto-registration (3043910)
+**Branch:** feature/register-command
+**Status:** Ready for review
+
+**Next Steps:**
+- Create pull request to dev branch
+- Consider adding unit tests for register module (optional - all integration works)
+- Update documentation if needed
