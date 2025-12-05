@@ -81,7 +81,7 @@ class TestCLIMain:
 
     def test_unimplemented_commands_return_error(self, runner):
         """Test that unimplemented commands exit with error code."""
-        # init and list are implemented, test only unimplemented ones
-        for command in ["prune", "activate"]:
-            result = runner.invoke(cli, [command])
-            assert result.exit_code == 1
+        # Test only unimplemented subcommands
+        # Note: configure vscode is a subcommand, not a top-level command
+        result = runner.invoke(cli, ["configure", "vscode"])
+        assert result.exit_code == 1

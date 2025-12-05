@@ -114,15 +114,64 @@ def prune(
 
 
 @cli.command()
+@click.option("--shell", type=str, help="Shell type (bash, zsh, fish, pwsh, cmd)")
 @common_options
 @handle_errors
 @click.pass_context
-def activate(ctx, verbose: bool, yes: bool, dry_run: bool, json_output: bool):
-    """Output activation command for current venv."""
-    if verbose:
-        info("activate command - not yet implemented")
-    error("Command not implemented yet")
-    sys.exit(1)
+def activate(
+    ctx,
+    shell: Optional[str],
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+):
+    """Output activation command for current venv.
+
+    Generates shell-specific commands to export all variables from .env.uve
+    and activate the project's venv.
+
+    Usage:
+        eval "$(prime-uve activate)"           # Bash/Zsh
+        eval (prime-uve activate | psub)       # Fish
+        Invoke-Expression (prime-uve activate) # PowerShell
+
+    Supported shells: bash, zsh, fish, pwsh, cmd
+    """
+    from prime_uve.cli.activate import activate_command
+
+    activate_command(ctx, shell, verbose, yes, dry_run, json_output)
+
+
+@cli.command()
+@click.option("--shell", type=str, help="Shell to spawn (bash, zsh, fish, pwsh, cmd)")
+@common_options
+@handle_errors
+@click.pass_context
+def shell(
+    ctx,
+    shell: Optional[str],
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+):
+    """Spawn a new shell with venv activated.
+
+    Starts a new shell session with:
+      • All variables from .env.uve loaded
+      • Virtual environment activated
+      • Prompt showing venv name
+
+    Usage:
+        prime-uve shell           # Auto-detect shell
+        prime-uve shell --shell bash  # Force specific shell
+
+    Type 'exit' to leave the activated shell and return to your original shell.
+    """
+    from prime_uve.cli.shell import shell_command
+
+    shell_command(ctx, shell, verbose, yes, dry_run, json_output)
 
 
 @cli.group()
