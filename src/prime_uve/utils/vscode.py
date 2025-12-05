@@ -136,8 +136,13 @@ def write_workspace(path: Path, data: dict) -> None:
         f.write("\n")  # Trailing newline
 
 
-def update_python_interpreter(workspace: dict, interpreter_path: str | Path) -> dict:
-    """Update Python interpreter setting in workspace data.
+def update_workspace_settings(workspace: dict, interpreter_path: str | Path) -> dict:
+    """Update Python settings in workspace data for complete venv integration.
+
+    Applies three settings:
+    1. python.defaultInterpreterPath - Points to venv Python interpreter
+    2. python.terminal.activateEnvironment - Enables auto-activation in new terminals
+    3. python.envFile - Loads environment variables from .env.uve
 
     Args:
         workspace: Workspace data dict
@@ -150,12 +155,19 @@ def update_python_interpreter(workspace: dict, interpreter_path: str | Path) -> 
         workspace["settings"] = {}
 
     workspace["settings"]["python.defaultInterpreterPath"] = str(interpreter_path)
+    workspace["settings"]["python.terminal.activateEnvironment"] = True
+    workspace["settings"]["python.envFile"] = "${workspaceFolder}/.env.uve"
 
     return workspace
 
 
 def create_default_workspace(project_root: Path, interpreter_path: str | Path) -> dict:
-    """Create minimal workspace structure.
+    """Create workspace structure with complete Python settings.
+
+    Includes all three settings for full venv integration:
+    - python.defaultInterpreterPath
+    - python.terminal.activateEnvironment
+    - python.envFile
 
     Args:
         project_root: Path to project root
@@ -166,5 +178,9 @@ def create_default_workspace(project_root: Path, interpreter_path: str | Path) -
     """
     return {
         "folders": [{"path": "."}],
-        "settings": {"python.defaultInterpreterPath": str(interpreter_path)},
+        "settings": {
+            "python.defaultInterpreterPath": str(interpreter_path),
+            "python.terminal.activateEnvironment": True,
+            "python.envFile": "${workspaceFolder}/.env.uve",
+        },
     }

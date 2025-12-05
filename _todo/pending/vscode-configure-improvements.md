@@ -1,11 +1,11 @@
-# Proposal: VS Code Configuration Improvements
+# Proposal: VS Code Workspace Configuration Improvements
 
 ## Original Objective
 
 VS Code's `configure vscode` command doesn't fully configure VS Code for proper venv integration. Issues:
-1. VS Code shows warning about default interpreter path being incorrect
-2. VS Code doesn't spawn new terminals with the virtual environment activated
-3. Poor discoverability - users don't know what settings are needed
+1. VS Code doesn't spawn new terminals with the virtual environment activated
+2. VS Code doesn't load environment variables from `.env.uve`
+3. Poor user guidance - users don't know what was configured or how to troubleshoot
 
 ## Problem Analysis
 
@@ -20,306 +20,224 @@ The `configure vscode` command updates the workspace file (`.code-workspace`) wi
 }
 ```
 
+**What works**:
+- Sets Python interpreter correctly
+- Uses `${HOME}` for cross-platform compatibility
+- Handles workspace discovery and creation
+
 ### What's Missing
 
-VS Code needs additional settings for full venv integration:
+VS Code needs additional workspace settings for complete venv integration:
 
-1. **`python.terminal.activateEnvironment`**: Should be `true` to auto-activate venv in terminals
-2. **`python.envFile`**: Should point to `.env.uve` so VS Code loads environment variables
-3. **Variable expansion**: VS Code may not expand `${HOME}` correctly on all platforms
-4. **Settings location**: Workspace settings vs folder settings (`.vscode/settings.json`)
+1. **`python.terminal.activateEnvironment`**: Must be `true` to auto-activate venv in new terminals
+2. **`python.envFile`**: Should point to `.env.uve` so VS Code loads `UV_PROJECT_ENVIRONMENT`
 
-### The Core Problem
+Without these settings:
+- New terminals don't show `(project-name)` prompt
+- Environment variables from `.env.uve` aren't loaded
+- Users manually activate venv each time
 
-VS Code has two configuration systems:
-- **Workspace files** (`.code-workspace`): Multi-folder workspaces
-- **Folder settings** (`.vscode/settings.json`): Single-folder projects
+### Scope Decision
 
-Current implementation only handles workspace files. Most users use folder settings.
+**ONLY support `.code-workspace` files.**
+
+Rationale:
+- Workspace files are prime-uve's existing pattern
+- Simpler implementation and testing
+- Clear mental model: one workspace file per project
+- Users who prefer folder settings can manually copy settings from workspace file
+- Avoids complexity of supporting two configuration systems
 
 ## Proposed Solution
 
-### 1. Support Both Configuration Methods
+### 1. Complete Settings Set
 
-Detect and configure both:
-
-**Priority order**:
-1. If `.code-workspace` exists → update workspace file
-2. Else → create/update `.vscode/settings.json`
-
-### 2. Complete Settings Configuration
-
-Apply all necessary settings:
+Apply all necessary settings to workspace file:
 
 ```json
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-  "python.terminal.activateEnvironment": true,
-  "python.envFile": "${workspaceFolder}/.env.uve"
+  "folders": [{"path": "."}],
+  "settings": {
+    "python.defaultInterpreterPath": "${HOME}/.prime-uve/venvs/project_hash/Scripts/python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python.envFile": "${workspaceFolder}/.env.uve"
+  }
 }
 ```
 
-**Note**: Use `${workspaceFolder}` for relative paths when possible.
+**Changes from current**:
+- Add `python.terminal.activateEnvironment: true` - enables auto-activation in new terminals
+- Add `python.envFile: "${workspaceFolder}/.env.uve"` - loads UV_PROJECT_ENVIRONMENT variable
 
-### 3. Path Resolution Strategy
+**Path strategy**:
+- `python.defaultInterpreterPath`: Use `${HOME}` (current behavior, cross-platform)
+- `python.envFile`: Use `${workspaceFolder}` (workspace-relative, always correct)
 
-VS Code has mixed support for environment variables:
+### 2. Improved User Guidance
 
-**Problem**: `${HOME}` doesn't always work in VS Code settings.
-
-**Solution**: Use a hybrid approach:
-- **Workspace file**: Use `${HOME}` for cross-user compatibility
-- **Folder settings**: Use expanded absolute path (user-specific)
-
-Rationale:
-- Workspace files are often committed to git → need portability
-- Folder settings (`.vscode/`) are often gitignored → can be user-specific
-
-### 4. Improved User Guidance
-
-After configuration, show actionable next steps:
+After configuration, show what was done and next steps:
 
 ```
-✓ VS Code configured successfully
+✓ VS Code workspace configured
+
+Workspace: prime-uve.code-workspace
 
 Settings applied:
-  - Python interpreter: <path>
-  - Terminal auto-activation: enabled
-  - Environment file: .env.uve
+  ✓ Python interpreter: ${HOME}/.prime-uve/venvs/prime-uve_hash/Scripts/python.exe
+  ✓ Terminal auto-activation: enabled
+  ✓ Environment file: .env.uve
 
 Next steps:
-  1. Reload VS Code window (Ctrl+Shift+P → "Developer: Reload Window")
-  2. Open a new terminal (Ctrl+`) to verify venv activation
-  3. If issues persist, select interpreter manually:
+  1. Open workspace in VS Code:
+     code prime-uve.code-workspace
+
+  2. Reload window if already open:
+     Ctrl+Shift+P → "Developer: Reload Window"
+
+  3. Open new terminal (Ctrl+`):
+     Should show: (prime-uve) in prompt
+
+  4. If interpreter not detected:
      Ctrl+Shift+P → "Python: Select Interpreter"
 ```
 
-### 5. Validation and Troubleshooting
+**Benefits**:
+- Clear visibility into what was configured
+- Actionable troubleshooting steps
+- User knows exactly what to expect
 
-Add `--verify` flag to check if configuration is working:
+### 3. Verification Mode (Optional Future Enhancement)
+
+Add `--verify` flag to validate configuration:
 
 ```bash
 prime-uve configure vscode --verify
 ```
 
-This would:
-1. Check if settings files exist
-2. Verify interpreter path exists
-3. Check if `.env.uve` exists
-4. Report any issues with fix suggestions
+Would check:
+1. Workspace file exists and is valid JSON
+2. Interpreter path exists on disk
+3. `.env.uve` exists
+4. All three settings are present and correct
+
+**Decision**: Defer to future release. Current scope is adding complete settings.
 
 ## Implementation Plan
 
-### Phase 1: Folder Settings Support
+### Phase 1: Add Complete Settings to Workspace
 
 1. **File**: `src/prime_uve/utils/vscode.py`
-   - Add `read_folder_settings()` function
-   - Add `write_folder_settings()` function
-   - Add `update_folder_settings()` function (like workspace but for `.vscode/settings.json`)
+   - Update `update_python_interpreter()` to `update_workspace_settings()`
+   - Add all three settings:
+     - `python.defaultInterpreterPath` (existing)
+     - `python.terminal.activateEnvironment: true` (new)
+     - `python.envFile: "${workspaceFolder}/.env.uve"` (new)
+   - Update `create_default_workspace()` to include all settings
 
 2. **File**: `src/prime_uve/cli/configure.py`
-   - Update `configure_vscode_command()` logic
-   - Priority: workspace file → folder settings
-   - Default to folder settings if neither exists
+   - Update function call from `update_python_interpreter()` to `update_workspace_settings()`
+   - No other logic changes needed
 
-3. **Tests**: `tests/test_cli/test_configure.py`
-   - Test folder settings creation
-   - Test folder settings update
-   - Test priority order (workspace takes precedence)
+3. **Tests**: `tests/test_utils/test_vscode.py`
+   - Update existing tests for renamed function
+   - Verify all three settings are applied
+   - Test that existing settings are preserved (merged, not replaced)
 
-### Phase 2: Complete Settings Set
-
-1. **File**: `src/prime_uve/utils/vscode.py`
-   - Update settings application to include:
-     - `python.terminal.activateEnvironment`: `true`
-     - `python.envFile`: `"${workspaceFolder}/.env.uve"` (or absolute)
-
-2. **File**: `src/prime_uve/cli/configure.py`
-   - Apply complete settings set in both workspace and folder modes
-
-3. **Tests**: `tests/test_cli/test_configure.py`
-   - Verify all settings are applied
-   - Test that existing settings are preserved
-
-### Phase 3: Path Resolution Strategy
-
-1. **File**: `src/prime_uve/utils/vscode.py`
-   - For **workspace files**: Use `${HOME}` in path
-   - For **folder settings**: Use expanded absolute path
-   - Document rationale in code comments
-
-2. **File**: `src/prime_uve/cli/configure.py`
-   - Implement hybrid path strategy
-   - Add `--use-absolute-paths` flag to force absolute paths everywhere
-
-3. **Tests**: `tests/test_cli/test_configure.py`
-   - Test workspace gets `${HOME}` path
-   - Test folder settings get absolute path
-   - Test `--use-absolute-paths` flag
-
-### Phase 4: Improved User Guidance
+### Phase 2: Enhanced User Guidance
 
 1. **File**: `src/prime_uve/cli/configure.py`
-   - Enhance success message with next steps
-   - List all applied settings
-   - Add troubleshooting hints
-
-2. **File**: `src/prime_uve/cli/output.py` (if needed)
-   - Add helper for formatted instruction lists
-
-### Phase 5: Verification Mode
-
-1. **File**: `src/prime_uve/cli/configure.py`
-   - Add `--verify` flag
-   - Implement verification checks:
-     - Settings files exist
-     - Interpreter path exists on disk
-     - `.env.uve` exists
-     - Settings values match expected
+   - Replace current success messages with detailed output:
+     - Show workspace filename
+     - List all three settings applied
+     - Show 4-step next steps guide
+   - Use existing output functions (success, info, echo)
 
 2. **Tests**: `tests/test_cli/test_configure.py`
-   - Test `--verify` with correct setup
-   - Test `--verify` with missing files
-   - Test `--verify` with mismatched settings
+   - Update snapshot tests for new output format
+   - Verify all guidance text appears in output
 
 ## Example Outputs
 
-### Current (Workspace File)
+### Current
 ```bash
 $ prime-uve configure vscode
-✓ VS Code configured successfully
-Updated workspace: prime-uve.code-workspace
+✓ Updated prime-uve.code-workspace
+✓ Python interpreter set to venv
+
+VS Code will detect the change automatically if open.
+If not, restart VS Code or reload the window.
 ```
 
-### Proposed (Folder Settings)
+### Proposed
 ```bash
 $ prime-uve configure vscode
-✓ VS Code configured successfully
+✓ VS Code workspace configured
 
-Configuration:
-  Location:    .vscode/settings.json
-  Interpreter: C:\Users\user\.prime-uve\venvs\prime-uve_hash\Scripts\python.exe
+Workspace: prime-uve.code-workspace
 
 Settings applied:
-  ✓ python.defaultInterpreterPath
-  ✓ python.terminal.activateEnvironment
-  ✓ python.envFile
+  ✓ Python interpreter: ${HOME}/.prime-uve/venvs/prime-uve_043331fa/Scripts/python.exe
+  ✓ Terminal auto-activation: enabled
+  ✓ Environment file: .env.uve
 
 Next steps:
-  1. Reload VS Code window:
+  1. Open workspace in VS Code:
+     code prime-uve.code-workspace
+
+  2. Reload window if already open:
      Ctrl+Shift+P → "Developer: Reload Window"
 
-  2. Open new terminal (Ctrl+`) to verify venv activation
-     You should see: (prime-uve) in the terminal prompt
+  3. Open new terminal (Ctrl+`):
+     Should show: (prime-uve) in prompt
 
-  3. If interpreter not detected:
+  4. If interpreter not detected:
      Ctrl+Shift+P → "Python: Select Interpreter"
-     → Choose: C:\Users\user\.prime-uve\venvs\prime-uve_hash\Scripts\python.exe
-
-  4. Check output panel for errors:
-     Ctrl+Shift+U → Select "Python" from dropdown
-```
-
-### Verification Mode
-```bash
-$ prime-uve configure vscode --verify
-Verifying VS Code configuration...
-
-✓ Settings file exists: .vscode/settings.json
-✓ Interpreter path valid: C:\Users\user\.prime-uve\venvs\prime-uve_hash\Scripts\python.exe
-✓ Environment file exists: .env.uve
-✓ python.defaultInterpreterPath: Set correctly
-✓ python.terminal.activateEnvironment: Enabled
-✓ python.envFile: Set correctly
-
-All checks passed! VS Code should be configured correctly.
-
-If terminals still don't activate venv:
-  - Try reloading VS Code window
-  - Check for conflicting settings in User settings
-  - Verify .env.uve contains UV_PROJECT_ENVIRONMENT
 ```
 
 ## Edge Cases
 
-1. **Both workspace and folder settings exist**: Prefer workspace file (explicitly inform user)
-2. **`.vscode/` directory doesn't exist**: Create it
-3. **`.vscode/settings.json` has comments**: Preserve them if possible (use `strip_json_comments` or warn user)
-4. **Conflicting user-level settings**: Detect and warn (verification mode)
-5. **Multiple workspace files**: Already handled by existing code (prompts user)
-6. **Interpreter doesn't exist yet**: Warn but still configure (user might create venv later)
-
-## Alternative Approaches
-
-### Option A: Generate VS Code Tasks
-Instead of just settings, generate tasks for common operations:
-```json
-{
-  "tasks": [
-    {
-      "label": "Activate venv",
-      "type": "shell",
-      "command": "prime-uve activate"
-    }
-  ]
-}
-```
-
-**Decision**: Out of scope for this task. Consider as future enhancement.
-
-### Option B: VS Code Extension
-Create a VS Code extension that integrates prime-uve directly.
-
-**Decision**: Too large for current scope. Current solution should work without extension.
-
-### Option C: Symlink `.venv` in Project Root
-Create `.venv` symlink pointing to external venv. VS Code auto-detects `.venv/`.
-
-**Pros**:
-- Zero configuration needed
-- Works with all tools, not just VS Code
-
-**Cons**:
-- Symlinks unreliable on Windows (requires admin or developer mode)
-- Clashes with uv's `.venv` if user runs `uv venv`
-- Adds complexity to prime-uve's mental model
-
-**Decision**: Consider as separate feature. Don't mix with configure command.
+1. **Multiple workspace files**: Already handled - prompts user to choose
+2. **Workspace file has existing settings**: Merge new settings, preserve others
+3. **Workspace file malformed**: Already handled - offers to backup and regenerate
+4. **Interpreter doesn't exist yet**: Already handled - validation checks before configuring
+5. **User has conflicting settings in User-level config**: Not our problem - workspace settings override user settings in VS Code
 
 ## Breaking Changes
 
-None. Existing workspace file configuration continues to work.
+None. Adds two new settings to workspace files without removing or changing existing behavior.
 
 ## Dependencies
 
-No new dependencies.
+None. Uses existing VS Code workspace utilities.
 
 ## Testing Strategy
 
-1. **Unit tests**: Settings file manipulation functions
-2. **Integration tests**: Full configure workflow
+1. **Unit tests**: `tests/test_utils/test_vscode.py`
+   - Test `update_workspace_settings()` adds all three settings
+   - Test `create_default_workspace()` includes all three settings
+   - Test merging with existing settings preserves other keys
+
+2. **Integration tests**: `tests/test_cli/test_configure.py`
+   - Test complete workflow produces workspace with all settings
+   - Test output messages contain expected guidance
+
 3. **Manual testing**:
-   - Test on Windows with folder settings
-   - Test on macOS with workspace file
-   - Verify terminal activation works
-   - Test verification mode
+   - Run on Windows and verify terminal auto-activation
+   - Check that `.env.uve` variables are loaded
+   - Verify workspace file is valid JSON
 
 ## Success Criteria
 
 After running `prime-uve configure vscode`:
-1. ✓ VS Code detects correct Python interpreter
+1. ✓ Workspace file contains all three Python settings
 2. ✓ New terminals auto-activate venv (shows `(project-name)` in prompt)
-3. ✓ No warnings in VS Code Python extension
-4. ✓ User understands what was configured and how to troubleshoot
+3. ✓ Environment variables from `.env.uve` are loaded in Python extension
+4. ✓ User receives clear guidance on next steps
 
-## Questions for User
+## Effort Estimate
 
-1. **Default configuration**: Should we default to folder settings (`.vscode/settings.json`) or workspace file (`.code-workspace`)? Current implementation prefers workspace files.
+- Phase 1 (Add settings): 1-2 hours
+- Phase 2 (Enhanced guidance): 30 minutes
+- Testing: 1 hour
 
-2. **Path strategy**: Confirm the hybrid approach (workspace uses `${HOME}`, folder uses absolute). Or always use absolute?
-
-3. **Terminal activation**: Should we also configure the shell integration settings (`python.terminal.activateEnvInCurrentTerminal`)?
-
-4. **Verification flag**: Include in first release or add later?
-
-5. **Multi-root workspaces**: How should we handle VS Code multi-root workspaces? Current implementation handles them, but should we detect and apply settings to all folders?
+**Total**: 2.5-3.5 hours

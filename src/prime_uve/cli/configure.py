@@ -13,7 +13,7 @@ from prime_uve.utils.vscode import (
     create_default_workspace,
     find_workspace_files,
     read_workspace,
-    update_python_interpreter,
+    update_workspace_settings,
     write_workspace,
 )
 
@@ -203,11 +203,21 @@ def configure_vscode_command(
 
             if not dry_run:
                 write_workspace(workspace_file, workspace_data)
-                success(f"Created {workspace_file.name}")
-                success("Python interpreter set to venv")
-                echo("\nTo use:")
-                echo(f"  1. Open workspace: code {workspace_file.name}")
-                echo("  2. VS Code will load with correct interpreter")
+                success("VS Code workspace configured")
+                echo(f"\nWorkspace: {workspace_file.name}")
+                echo("\nSettings applied:")
+                echo(f"  ✓ Python interpreter: {interpreter_path}")
+                echo("  ✓ Terminal auto-activation: enabled")
+                echo("  ✓ Environment file: .env.uve")
+                echo("\nNext steps:")
+                echo(f"  1. Open workspace in VS Code:")
+                echo(f"     code {workspace_file.name}")
+                echo("\n  2. Reload window if already open:")
+                echo('     Ctrl+Shift+P → "Developer: Reload Window"')
+                echo("\n  3. Open new terminal (Ctrl+`):")
+                echo(f"     Should show: ({project_root.name}) in prompt")
+                echo("\n  4. If interpreter not detected:")
+                echo('     Ctrl+Shift+P → "Python: Select Interpreter"')
             else:
                 echo(f"[DRY RUN] Would create: {workspace_file}")
                 echo(f"[DRY RUN] Interpreter: {interpreter_path}")
@@ -276,7 +286,7 @@ def configure_vscode_command(
             raise click.Abort()
 
     # Update settings
-    workspace_data = update_python_interpreter(workspace_data, interpreter_path)
+    workspace_data = update_workspace_settings(workspace_data, interpreter_path)
 
     # Write changes
     if dry_run:
@@ -285,12 +295,25 @@ def configure_vscode_command(
         echo("  settings.python.defaultInterpreterPath:")
         echo(f"    Old: {current_interpreter or '(not set)'}")
         echo(f"    New: {interpreter_path}")
+        echo("  settings.python.terminal.activateEnvironment: true")
+        echo('  settings.python.envFile: "${workspaceFolder}/.env.uve"')
     else:
         write_workspace(workspace_file, workspace_data)
-        success(f"Updated {workspace_file.name}")
-        success("Python interpreter set to venv")
-        echo("\nVS Code will detect the change automatically if open.")
-        echo("If not, restart VS Code or reload the window.")
+        success("VS Code workspace configured")
+        echo(f"\nWorkspace: {workspace_file.name}")
+        echo("\nSettings applied:")
+        echo(f"  ✓ Python interpreter: {interpreter_path}")
+        echo("  ✓ Terminal auto-activation: enabled")
+        echo("  ✓ Environment file: .env.uve")
+        echo("\nNext steps:")
+        echo(f"  1. Open workspace in VS Code:")
+        echo(f"     code {workspace_file.name}")
+        echo("\n  2. Reload window if already open:")
+        echo('     Ctrl+Shift+P → "Developer: Reload Window"')
+        echo("\n  3. Open new terminal (Ctrl+`):")
+        echo(f"     Should show: ({project_root.name}) in prompt")
+        echo("\n  4. If interpreter not detected:")
+        echo('     Ctrl+Shift+P → "Python: Select Interpreter"')
 
     if json_output:
         print_json(
