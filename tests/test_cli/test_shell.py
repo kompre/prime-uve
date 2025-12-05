@@ -293,6 +293,7 @@ def test_shell_expands_variables(runner, mock_project_with_venv, monkeypatch, tm
 # Windows-Specific Tests
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific test")
 def test_shell_sets_home_on_windows(runner, mock_project_with_venv, monkeypatch):
     """Test that HOME is set on Windows if missing."""
     monkeypatch.chdir(mock_project_with_venv["project_dir"])
@@ -300,13 +301,12 @@ def test_shell_sets_home_on_windows(runner, mock_project_with_venv, monkeypatch)
     monkeypatch.delenv("HOME", raising=False)
     monkeypatch.setenv("USERPROFILE", "C:\\Users\\testuser")
 
-    with patch.object(sys, "platform", "win32"):
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0)
-            result = runner.invoke(cli, ["shell"])
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = runner.invoke(cli, ["shell"])
 
-            assert result.exit_code == 0
-            call_kwargs = mock_run.call_args[1]
-            env = call_kwargs["env"]
-            assert "HOME" in env
-            assert env["HOME"] == "C:\\Users\\testuser"
+        assert result.exit_code == 0
+        call_kwargs = mock_run.call_args[1]
+        env = call_kwargs["env"]
+        assert "HOME" in env
+        assert env["HOME"] == "C:\\Users\\testuser"
