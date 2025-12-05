@@ -712,3 +712,70 @@ Estimated effort: 3-4 hours including tests and documentation.
 - No `eval` required - just run `prime-uve shell` and you're in
 - Similar UX to `pipenv shell` or `poetry shell`
 - Type `exit` to leave the activated shell
+
+### 2025-12-05 - Added Prompt Support
+- bash/zsh: Set PS1 to show venv name in prompt
+- PowerShell: Dot-source Activate.ps1 to get proper prompt function
+- fish: Inherits prompt from activation script
+- Fixed Windows-specific test to skip on non-Windows platforms
+
+---
+
+## Completion Summary
+
+**Status**: ✅ COMPLETED
+**PR**: #16 - Merged to dev
+**Completion Date**: 2025-12-05
+
+### What Was Delivered
+
+**Two commands implemented:**
+
+1. **`prime-uve activate`** - Generates shell-specific activation commands
+   - Outputs commands for eval pattern: `eval "$(prime-uve activate)"`
+   - Supports bash, zsh, fish, PowerShell, cmd
+   - Exports all variables from .env.uve
+   - Keeps variables unexpanded for portability
+
+2. **`prime-uve shell`** - Spawns interactive shell with venv activated
+   - Simple usage: just run `prime-uve shell`
+   - Sets VIRTUAL_ENV and modifies PATH
+   - Shows venv name in prompt
+   - Type `exit` to leave
+
+**Test Coverage:**
+- 32 tests for shell utilities
+- 18 tests for activate command
+- 14 tests for shell command
+- All 352 tests passing (9 skipped)
+
+### Key Features
+
+- Multi-shell support (bash, zsh, fish, PowerShell, cmd)
+- Auto-detection with manual override (`--shell`)
+- Cross-platform path handling
+- Proper prompt modification on all shells
+- Comprehensive error handling
+- Verbose mode for debugging
+
+### Files Created/Modified
+
+**New files:**
+- `src/prime_uve/utils/shell.py`
+- `src/prime_uve/cli/activate.py`
+- `src/prime_uve/cli/shell.py`
+- `tests/test_utils/test_shell.py`
+- `tests/test_cli/test_activate.py`
+- `tests/test_cli/test_shell.py`
+
+**Modified:**
+- `src/prime_uve/cli/main.py` - Registered both commands
+- `CLAUDE.md` - Updated task workflow documentation
+
+### Outcome
+
+Users now have two ways to activate venvs:
+- **Quick/everyday**: `prime-uve shell`
+- **Scripts/advanced**: `eval "$(prime-uve activate)"`
+
+Both work cross-platform and show the venv in the prompt.
