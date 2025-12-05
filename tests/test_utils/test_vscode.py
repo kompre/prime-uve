@@ -85,10 +85,10 @@ def test_find_workspace_files_only_in_vscode(tmp_path):
 
 def test_strip_json_comments_line_comments():
     """Test removing // style comments."""
-    content = '''{
+    content = """{
     "key": "value",  // This is a comment
     "other": "data"  // Another comment
-}'''
+}"""
 
     result = strip_json_comments(content)
 
@@ -99,13 +99,13 @@ def test_strip_json_comments_line_comments():
 
 def test_strip_json_comments_block_comments():
     """Test removing /* */ style comments."""
-    content = '''{
+    content = """{
     /* This is a block comment */
     "key": "value",
     /* Multi-line
        block comment */
     "other": "data"
-}'''
+}"""
 
     result = strip_json_comments(content)
 
@@ -117,12 +117,12 @@ def test_strip_json_comments_block_comments():
 
 def test_strip_json_comments_mixed():
     """Test removing both comment styles."""
-    content = '''{
+    content = """{
     // Line comment
     "key": "value",  // Inline comment
     /* Block comment */
     "other": "data"
-}'''
+}"""
 
     result = strip_json_comments(content)
 
@@ -134,10 +134,10 @@ def test_strip_json_comments_mixed():
 
 def test_strip_json_comments_preserves_strings():
     """Test that // and /* */ inside strings are preserved."""
-    content = '''{
+    content = """{
     "url": "http://example.com",
     "comment": "This /* is */ not a comment"
-}'''
+}"""
 
     result = strip_json_comments(content)
 
@@ -153,7 +153,7 @@ def test_read_workspace_valid(tmp_path):
     workspace = tmp_path / "test.code-workspace"
     data = {
         "folders": [{"path": "."}],
-        "settings": {"python.defaultInterpreterPath": "/path/to/python"}
+        "settings": {"python.defaultInterpreterPath": "/path/to/python"},
     }
     workspace.write_text(json.dumps(data, indent=2))
 
@@ -165,7 +165,7 @@ def test_read_workspace_valid(tmp_path):
 def test_read_workspace_with_comments(tmp_path):
     """Test reading workspace file with comments."""
     workspace = tmp_path / "test.code-workspace"
-    content = '''{
+    content = """{
     // Workspace configuration
     "folders": [
         {"path": "."}  // Root folder
@@ -173,7 +173,7 @@ def test_read_workspace_with_comments(tmp_path):
     "settings": {
         "python.defaultInterpreterPath": "/path/to/python"
     }
-}'''
+}"""
     workspace.write_text(content)
 
     result = read_workspace(workspace)
@@ -186,7 +186,7 @@ def test_read_workspace_with_comments(tmp_path):
 def test_read_workspace_malformed(tmp_path):
     """Test reading malformed JSON raises ValueError."""
     workspace = tmp_path / "test.code-workspace"
-    workspace.write_text('{ invalid json }')
+    workspace.write_text("{ invalid json }")
 
     with pytest.raises(ValueError, match="Malformed workspace file"):
         read_workspace(workspace)
@@ -197,7 +197,7 @@ def test_write_workspace(tmp_path):
     workspace = tmp_path / "test.code-workspace"
     data = {
         "folders": [{"path": "."}],
-        "settings": {"python.defaultInterpreterPath": "/path/to/python"}
+        "settings": {"python.defaultInterpreterPath": "/path/to/python"},
     }
 
     write_workspace(workspace, data)
@@ -207,7 +207,7 @@ def test_write_workspace(tmp_path):
     assert "folders" in content
     assert "python.defaultInterpreterPath" in content
     # Check trailing newline
-    assert content.endswith('\n')
+    assert content.endswith("\n")
 
 
 def test_write_workspace_preserves_unicode(tmp_path):
@@ -215,12 +215,12 @@ def test_write_workspace_preserves_unicode(tmp_path):
     workspace = tmp_path / "test.code-workspace"
     data = {
         "folders": [{"path": "."}],
-        "settings": {"description": "Test with unicode: \u2713"}
+        "settings": {"description": "Test with unicode: \u2713"},
     }
 
     write_workspace(workspace, data)
 
-    content = workspace.read_text(encoding='utf-8')
+    content = workspace.read_text(encoding="utf-8")
     assert "\u2713" in content or "✓" in content
 
 
@@ -244,8 +244,8 @@ def test_update_python_interpreter_existing():
         "folders": [{"path": "."}],
         "settings": {
             "python.defaultInterpreterPath": "/old/path",
-            "python.linting.enabled": True
-        }
+            "python.linting.enabled": True,
+        },
     }
     interpreter_path = Path("/new/path/bin/python")
 
@@ -262,8 +262,8 @@ def test_update_python_interpreter_preserves_other_settings():
         "folders": [{"path": "."}],
         "settings": {
             "editor.fontSize": 14,
-            "terminal.integrated.shell.linux": "/bin/bash"
-        }
+            "terminal.integrated.shell.linux": "/bin/bash",
+        },
     }
     interpreter_path = Path("/path/to/python")
 

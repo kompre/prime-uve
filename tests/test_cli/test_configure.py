@@ -2,8 +2,6 @@
 
 import json
 import sys
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -30,7 +28,7 @@ def mock_project(tmp_path):
     # Create .env.uve with venv path (no quotes)
     venv_dir = tmp_path / "venvs" / "test_venv"
     env_file = project_dir / ".env.uve"
-    env_file.write_text(f'UV_PROJECT_ENVIRONMENT={venv_dir}\n')
+    env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_dir}\n")
 
     # Create venv directory with Python interpreter
     venv_dir.mkdir(parents=True)
@@ -72,13 +70,17 @@ def test_configure_vscode_updates_existing_workspace(runner, mock_project, monke
 
     # Create existing workspace
     workspace = mock_project / "test.code-workspace"
-    workspace.write_text(json.dumps({
-        "folders": [{"path": "."}],
-        "settings": {
-            "python.defaultInterpreterPath": "/old/path",
-            "editor.fontSize": 14
-        }
-    }))
+    workspace.write_text(
+        json.dumps(
+            {
+                "folders": [{"path": "."}],
+                "settings": {
+                    "python.defaultInterpreterPath": "/old/path",
+                    "editor.fontSize": 14,
+                },
+            }
+        )
+    )
 
     result = runner.invoke(cli, ["configure", "vscode", "--yes"])
 
@@ -91,7 +93,9 @@ def test_configure_vscode_updates_existing_workspace(runner, mock_project, monke
     assert data["settings"]["editor.fontSize"] == 14
 
 
-def test_configure_vscode_sets_correct_interpreter(runner, mock_project, monkeypatch, tmp_path):
+def test_configure_vscode_sets_correct_interpreter(
+    runner, mock_project, monkeypatch, tmp_path
+):
     """Test that configure vscode sets correct interpreter path."""
     monkeypatch.chdir(mock_project)
 
@@ -122,11 +126,9 @@ def test_configure_vscode_preserves_other_settings(runner, mock_project, monkeyp
             "python.defaultInterpreterPath": "/old/path",
             "editor.fontSize": 14,
             "python.linting.enabled": True,
-            "terminal.integrated.shell.linux": "/bin/bash"
+            "terminal.integrated.shell.linux": "/bin/bash",
         },
-        "extensions": {
-            "recommendations": ["ms-python.python"]
-        }
+        "extensions": {"recommendations": ["ms-python.python"]},
     }
     workspace.write_text(json.dumps(original_data))
 
@@ -155,7 +157,9 @@ def test_configure_vscode_shows_success_message(runner, mock_project, monkeypatc
 # Multiple Workspace Files Tests
 
 
-def test_configure_vscode_multiple_files_prompts_user(runner, mock_project, monkeypatch):
+def test_configure_vscode_multiple_files_prompts_user(
+    runner, mock_project, monkeypatch
+):
     """Test that multiple workspace files prompt user to choose."""
     monkeypatch.chdir(mock_project)
 
@@ -175,7 +179,9 @@ def test_configure_vscode_multiple_files_prompts_user(runner, mock_project, monk
     assert "Multiple workspace files found" in result.output
 
 
-def test_configure_vscode_multiple_files_user_selects(runner, mock_project, monkeypatch):
+def test_configure_vscode_multiple_files_user_selects(
+    runner, mock_project, monkeypatch
+):
     """Test user can select specific workspace file."""
     monkeypatch.chdir(mock_project)
 
@@ -208,7 +214,9 @@ def test_configure_vscode_workspace_option(runner, mock_project, monkeypatch):
     workspace2.write_text('{"folders": []}')
 
     # Use --workspace to specify which one
-    result = runner.invoke(cli, ["configure", "vscode", "--workspace", "test2.code-workspace", "--yes"])
+    result = runner.invoke(
+        cli, ["configure", "vscode", "--workspace", "test2.code-workspace", "--yes"]
+    )
 
     assert result.exit_code == 0
 
@@ -257,7 +265,7 @@ def test_configure_vscode_malformed_workspace(runner, mock_project, monkeypatch)
 
     # Create malformed workspace
     workspace = mock_project / "test.code-workspace"
-    workspace.write_text('{ invalid json }')
+    workspace.write_text("{ invalid json }")
 
     # Should prompt for backup and recreate
     result = runner.invoke(cli, ["configure", "vscode", "--yes"])
@@ -279,7 +287,7 @@ def test_configure_vscode_empty_workspace(runner, mock_project, monkeypatch):
 
     # Create minimal workspace
     workspace = mock_project / "test.code-workspace"
-    workspace.write_text('{}')
+    workspace.write_text("{}")
 
     result = runner.invoke(cli, ["configure", "vscode", "--yes"])
 
@@ -294,22 +302,30 @@ def test_configure_vscode_empty_workspace(runner, mock_project, monkeypatch):
 # Confirmation and Safety Tests
 
 
-def test_configure_vscode_confirmation_when_overwriting(runner, mock_project, monkeypatch):
+def test_configure_vscode_confirmation_when_overwriting(
+    runner, mock_project, monkeypatch
+):
     """Test confirmation prompt when existing interpreter is set."""
     monkeypatch.chdir(mock_project)
 
     # Create workspace with existing interpreter
     workspace = mock_project / "test.code-workspace"
-    workspace.write_text(json.dumps({
-        "folders": [{"path": "."}],
-        "settings": {"python.defaultInterpreterPath": "/old/path"}
-    }))
+    workspace.write_text(
+        json.dumps(
+            {
+                "folders": [{"path": "."}],
+                "settings": {"python.defaultInterpreterPath": "/old/path"},
+            }
+        )
+    )
 
     # Without --yes, should prompt
     result = runner.invoke(cli, ["configure", "vscode"], input="y\n")
 
     assert result.exit_code == 0
-    assert "Update workspace?" in result.output or "Current interpreter" in result.output
+    assert (
+        "Update workspace?" in result.output or "Current interpreter" in result.output
+    )
 
 
 def test_configure_vscode_yes_skips_confirmation(runner, mock_project, monkeypatch):
@@ -318,10 +334,14 @@ def test_configure_vscode_yes_skips_confirmation(runner, mock_project, monkeypat
 
     # Create workspace with existing interpreter
     workspace = mock_project / "test.code-workspace"
-    workspace.write_text(json.dumps({
-        "folders": [{"path": "."}],
-        "settings": {"python.defaultInterpreterPath": "/old/path"}
-    }))
+    workspace.write_text(
+        json.dumps(
+            {
+                "folders": [{"path": "."}],
+                "settings": {"python.defaultInterpreterPath": "/old/path"},
+            }
+        )
+    )
 
     # With --yes, should not prompt
     result = runner.invoke(cli, ["configure", "vscode", "--yes"])
@@ -337,7 +357,7 @@ def test_configure_vscode_dry_run(runner, mock_project, monkeypatch):
     workspace = mock_project / "test.code-workspace"
     original_data = {
         "folders": [{"path": "."}],
-        "settings": {"python.defaultInterpreterPath": "/old/path"}
+        "settings": {"python.defaultInterpreterPath": "/old/path"},
     }
     workspace.write_text(json.dumps(original_data))
 
@@ -389,7 +409,7 @@ def test_configure_vscode_json_output(runner, mock_project, monkeypatch):
     # Find JSON in output - it may span multiple lines
     # Look for the start of JSON object and parse from there
     output = result.output
-    json_start = output.find('{')
+    json_start = output.find("{")
     if json_start >= 0:
         # Find the matching closing brace (simple approach for nested objects)
         json_text = output[json_start:]
@@ -401,9 +421,9 @@ def test_configure_vscode_json_output(runner, mock_project, monkeypatch):
             brace_count = 0
             json_end = json_start
             for i, char in enumerate(output[json_start:], json_start):
-                if char == '{':
+                if char == "{":
                     brace_count += 1
-                elif char == '}':
+                elif char == "}":
                     brace_count -= 1
                     if brace_count == 0:
                         json_end = i + 1
@@ -428,19 +448,23 @@ def test_configure_vscode_no_pyproject(runner, tmp_path, monkeypatch):
     result = runner.invoke(cli, ["configure", "vscode"])
 
     assert result.exit_code != 0
-    assert "Not in a Python project" in result.output or "pyproject.toml" in result.output
+    assert (
+        "Not in a Python project" in result.output or "pyproject.toml" in result.output
+    )
 
 
 # Workspace with Comments Tests
 
 
-def test_configure_vscode_preserves_workspace_with_comments(runner, mock_project, monkeypatch):
+def test_configure_vscode_preserves_workspace_with_comments(
+    runner, mock_project, monkeypatch
+):
     """Test that workspace files with comments are handled correctly."""
     monkeypatch.chdir(mock_project)
 
     # Create workspace with comments
     workspace = mock_project / "test.code-workspace"
-    content = '''{
+    content = """{
     // Workspace configuration
     "folders": [
         {"path": "."}  // Root folder
@@ -449,7 +473,7 @@ def test_configure_vscode_preserves_workspace_with_comments(runner, mock_project
         // Python settings
         "python.defaultInterpreterPath": "/old/path"
     }
-}'''
+}"""
     workspace.write_text(content)
 
     result = runner.invoke(cli, ["configure", "vscode", "--yes"])

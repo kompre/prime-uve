@@ -1,12 +1,10 @@
 """Main CLI entry point for prime-uve."""
 
-import sys
 from pathlib import Path
 from typing import Optional
 
 import click
 
-from prime_uve.cli.output import error, info
 from prime_uve.cli.decorators import common_options, handle_errors
 
 
@@ -181,7 +179,9 @@ def configure():
 
 
 @configure.command()
-@click.option("--workspace", type=click.Path(), help="Specific workspace file to update")
+@click.option(
+    "--workspace", type=click.Path(), help="Specific workspace file to update"
+)
 @click.option("--create", is_flag=True, help="Create new workspace file")
 @common_options
 @handle_errors

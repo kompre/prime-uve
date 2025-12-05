@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from prime_uve.cli.output import confirm, echo, error, info, print_json, success, warning
+from prime_uve.cli.output import confirm, echo, error, info, print_json, success
 from prime_uve.core.env_file import read_env_file
 from prime_uve.core.paths import expand_path_variables
 from prime_uve.core.project import find_project_root
@@ -33,7 +33,9 @@ def _get_interpreter_path(venv_path: Path) -> Path:
         return venv_path / "bin" / "python"
 
 
-def _prompt_workspace_choice(workspace_files: list[Path], project_root: Path) -> Path | None:
+def _prompt_workspace_choice(
+    workspace_files: list[Path], project_root: Path
+) -> Path | None:
     """Prompt user to select a workspace file.
 
     Args:
@@ -53,9 +55,11 @@ def _prompt_workspace_choice(workspace_files: list[Path], project_root: Path) ->
 
     echo("")
     choice_str = click.prompt(
-        "Which workspace should be updated? [1-{}, 0 to cancel]".format(len(workspace_files)),
+        "Which workspace should be updated? [1-{}, 0 to cancel]".format(
+            len(workspace_files)
+        ),
         type=str,
-        default="1"
+        default="1",
     )
 
     try:
@@ -159,9 +163,7 @@ def configure_vscode_command(
         if not workspace_files:
             # No workspace files found
             if not create and not confirm(
-                "No workspace file found. Create one?",
-                default=True,
-                yes_flag=yes
+                "No workspace file found. Create one?", default=True, yes_flag=yes
             ):
                 raise click.Abort()
 
@@ -187,13 +189,15 @@ def configure_vscode_command(
             workspace_created = True
 
             if json_output:
-                print_json({
-                    "workspace_file": str(workspace_file),
-                    "created": True,
-                    "updated": False,
-                    "interpreter_path": str(interpreter_path),
-                    "previous_interpreter": None
-                })
+                print_json(
+                    {
+                        "workspace_file": str(workspace_file),
+                        "created": True,
+                        "updated": False,
+                        "interpreter_path": str(interpreter_path),
+                        "previous_interpreter": None,
+                    }
+                )
 
             return
 
@@ -226,7 +230,7 @@ def configure_vscode_command(
                 raise click.Abort()
 
         # Backup existing file
-        backup_path = workspace_file.with_suffix('.code-workspace.bak')
+        backup_path = workspace_file.with_suffix(".code-workspace.bak")
         workspace_file.rename(backup_path)
         info(f"Backed up to: {backup_path}")
 
@@ -235,7 +239,9 @@ def configure_vscode_command(
         workspace_created = True
 
     # Check if interpreter already set
-    current_interpreter = workspace_data.get("settings", {}).get("python.defaultInterpreterPath")
+    current_interpreter = workspace_data.get("settings", {}).get(
+        "python.defaultInterpreterPath"
+    )
 
     if current_interpreter and current_interpreter != str(interpreter_path) and not yes:
         echo(f"\nCurrent interpreter: {current_interpreter}")
@@ -250,7 +256,7 @@ def configure_vscode_command(
     if dry_run:
         echo(f"[DRY RUN] Would update workspace: {workspace_file.name}")
         echo("\n[DRY RUN] Changes:")
-        echo(f"  settings.python.defaultInterpreterPath:")
+        echo("  settings.python.defaultInterpreterPath:")
         echo(f"    Old: {current_interpreter or '(not set)'}")
         echo(f"    New: {interpreter_path}")
     else:
@@ -261,10 +267,12 @@ def configure_vscode_command(
         echo("If not, restart VS Code or reload the window.")
 
     if json_output:
-        print_json({
-            "workspace_file": str(workspace_file),
-            "created": workspace_created,
-            "updated": not workspace_created,
-            "interpreter_path": str(interpreter_path),
-            "previous_interpreter": current_interpreter
-        })
+        print_json(
+            {
+                "workspace_file": str(workspace_file),
+                "created": workspace_created,
+                "updated": not workspace_created,
+                "interpreter_path": str(interpreter_path),
+                "previous_interpreter": current_interpreter,
+            }
+        )

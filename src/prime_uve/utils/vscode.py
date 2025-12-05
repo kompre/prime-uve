@@ -1,7 +1,6 @@
 """VS Code workspace utilities for venv configuration."""
 
 import json
-import re
 from pathlib import Path
 
 
@@ -61,7 +60,7 @@ def strip_json_comments(content: str) -> str:
             i += 1
             continue
 
-        if char == '\\' and in_string:
+        if char == "\\" and in_string:
             result.append(char)
             escape_next = True
             i += 1
@@ -77,18 +76,18 @@ def strip_json_comments(content: str) -> str:
         # Only process comments outside strings
         if not in_string:
             # Check for // comment
-            if i < len(content) - 1 and content[i:i+2] == '//':
+            if i < len(content) - 1 and content[i : i + 2] == "//":
                 # Skip until end of line
-                while i < len(content) and content[i] != '\n':
+                while i < len(content) and content[i] != "\n":
                     i += 1
                 continue
 
             # Check for /* comment
-            if i < len(content) - 1 and content[i:i+2] == '/*':
+            if i < len(content) - 1 and content[i : i + 2] == "/*":
                 # Skip until */
                 i += 2
                 while i < len(content) - 1:
-                    if content[i:i+2] == '*/':
+                    if content[i : i + 2] == "*/":
                         i += 2
                         break
                     i += 1
@@ -98,7 +97,7 @@ def strip_json_comments(content: str) -> str:
         result.append(char)
         i += 1
 
-    return ''.join(result)
+    return "".join(result)
 
 
 def read_workspace(path: Path) -> dict:
@@ -116,7 +115,7 @@ def read_workspace(path: Path) -> dict:
         ValueError: If JSON is malformed
     """
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             content = f.read()
             # Strip comments before parsing
             content = strip_json_comments(content)
@@ -132,9 +131,9 @@ def write_workspace(path: Path, data: dict) -> None:
         path: Path to .code-workspace file
         data: Workspace data to write
     """
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write('\n')  # Trailing newline
+        f.write("\n")  # Trailing newline
 
 
 def update_python_interpreter(workspace: dict, interpreter_path: Path) -> dict:
@@ -166,10 +165,6 @@ def create_default_workspace(project_root: Path, interpreter_path: Path) -> dict
         New workspace data dict
     """
     return {
-        "folders": [
-            {"path": "."}
-        ],
-        "settings": {
-            "python.defaultInterpreterPath": str(interpreter_path)
-        }
+        "folders": [{"path": "."}],
+        "settings": {"python.defaultInterpreterPath": str(interpreter_path)},
     }
