@@ -149,7 +149,12 @@ def activate(
 @handle_errors
 @click.pass_context
 def shell(
-    ctx, shell: Optional[str], verbose: bool, yes: bool, dry_run: bool, json_output: bool
+    ctx,
+    shell: Optional[str],
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
 ):
     """Spawn a new shell with venv activated.
 

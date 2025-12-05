@@ -1,8 +1,6 @@
 """Tests for prime-uve shell command."""
 
-import os
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -186,7 +184,10 @@ def test_shell_no_env_file(runner, tmp_path, monkeypatch):
     result = runner.invoke(cli, ["shell"])
 
     assert result.exit_code != 0
-    assert "not initialized" in result.output.lower() or "no .env.uve" in result.output.lower()
+    assert (
+        "not initialized" in result.output.lower()
+        or "no .env.uve" in result.output.lower()
+    )
 
 
 def test_shell_venv_doesnt_exist(runner, tmp_path, monkeypatch):

@@ -3,11 +3,10 @@
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 import click
 
-from prime_uve.cli.output import echo, error, info
+from prime_uve.cli.output import info
 from prime_uve.core.env_file import EnvFileError, find_env_file_strict, read_env_file
 from prime_uve.core.paths import expand_path_variables
 from prime_uve.core.project import find_project_root
@@ -63,7 +62,7 @@ def shell_command(
         env_vars = read_env_file(env_file)
         if not env_vars:
             raise click.ClickException(
-                "Empty .env.uve file\n" "Run 'prime-uve init' to configure the project."
+                "Empty .env.uve file\nRun 'prime-uve init' to configure the project."
             )
 
         # 3. Extract venv path and validate
