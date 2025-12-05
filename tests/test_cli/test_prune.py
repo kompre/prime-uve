@@ -282,7 +282,9 @@ class TestPruneAll:
     @patch("prime_uve.cli.prune.auto_register_current_project")
     @patch("prime_uve.cli.prune.find_untracked_venvs")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_all_empty_cache(self, mock_cache_class, mock_find_untracked, mock_auto_register, runner):
+    def test_prune_all_empty_cache(
+        self, mock_cache_class, mock_find_untracked, mock_auto_register, runner
+    ):
         """Test prune --all with empty cache and no untracked venvs."""
         mock_cache = Mock()
         mock_cache.list_all.return_value = {}
@@ -349,7 +351,13 @@ class TestPruneAll:
     @patch("prime_uve.cli.prune.expand_path_variables")
     @patch("prime_uve.cli.prune.Cache")
     def test_prune_all_removes_untracked_venvs(
-        self, mock_cache_class, mock_expand, mock_find_untracked, mock_auto_register, runner, tmp_path
+        self,
+        mock_cache_class,
+        mock_expand,
+        mock_find_untracked,
+        mock_auto_register,
+        runner,
+        tmp_path,
     ):
         """Test that --all removes untracked venvs on disk."""
         venv1 = tmp_path / "venv1"
@@ -409,7 +417,9 @@ class TestPruneAll:
 
     @patch("prime_uve.cli.prune.auto_register_current_project")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_all_dry_run(self, mock_cache_class, mock_auto_register, runner, tmp_path):
+    def test_prune_all_dry_run(
+        self, mock_cache_class, mock_auto_register, runner, tmp_path
+    ):
         """Test prune --all in dry run mode."""
         mock_cache = Mock()
         mock_cache.list_all.return_value = {
@@ -442,7 +452,10 @@ class TestPruneValid:
         result = runner.invoke(cli, ["prune", "--valid", "--yes"])
 
         assert result.exit_code == 0
-        assert "No valid venvs found" in result.output or "No managed venvs found" in result.output
+        assert (
+            "No valid venvs found" in result.output
+            or "No managed venvs found" in result.output
+        )
 
     @patch("prime_uve.cli.prune.Cache")
     @patch("prime_uve.cli.prune.expand_path_variables")
@@ -482,7 +495,7 @@ class TestPruneValid:
                 "project_name": "orphan_project",
                 "path_hash": "def456",
                 "created_at": "2025-12-02T11:00:00Z",
-            }
+            },
         }
         mock_cache_class.return_value = mock_cache
 
@@ -510,7 +523,13 @@ class TestPruneValid:
     @patch("prime_uve.cli.prune.expand_path_variables")
     @patch("prime_uve.cli.prune.get_disk_usage")
     def test_prune_valid_clears_cache_entries(
-        self, mock_disk_usage, mock_expand, mock_cache_class, mock_auto_register, runner, tmp_path
+        self,
+        mock_disk_usage,
+        mock_expand,
+        mock_cache_class,
+        mock_auto_register,
+        runner,
+        tmp_path,
     ):
         """Test that --valid clears cache entries for removed venvs."""
         # Create valid project
@@ -544,7 +563,9 @@ class TestPruneValid:
 
     @patch("prime_uve.cli.prune.auto_register_current_project")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_valid_respects_yes_flag(self, mock_cache_class, mock_auto_register, runner, tmp_path):
+    def test_prune_valid_respects_yes_flag(
+        self, mock_cache_class, mock_auto_register, runner, tmp_path
+    ):
         """Test that --valid respects --yes flag to skip confirmation."""
         valid_project = tmp_path / "valid_project"
         valid_project.mkdir()
@@ -573,7 +594,9 @@ class TestPruneValid:
 
     @patch("prime_uve.cli.prune.auto_register_current_project")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_valid_dry_run(self, mock_cache_class, mock_auto_register, runner, tmp_path):
+    def test_prune_valid_dry_run(
+        self, mock_cache_class, mock_auto_register, runner, tmp_path
+    ):
         """Test prune --valid in dry run mode."""
         valid_project = tmp_path / "valid_project"
         valid_project.mkdir()

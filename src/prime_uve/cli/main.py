@@ -78,9 +78,17 @@ def list(
 
 
 @cli.command()
-@click.option("--all", "all_venvs", is_flag=True, help="Remove ALL venvs (tracked and untracked)")
-@click.option("--valid", is_flag=True, help="Remove only valid venvs (cache matches .env.uve)")
-@click.option("--orphan", is_flag=True, help="Remove only orphaned venvs (cache mismatch or untracked)")
+@click.option(
+    "--all", "all_venvs", is_flag=True, help="Remove ALL venvs (tracked and untracked)"
+)
+@click.option(
+    "--valid", is_flag=True, help="Remove only valid venvs (cache matches .env.uve)"
+)
+@click.option(
+    "--orphan",
+    is_flag=True,
+    help="Remove only orphaned venvs (cache mismatch or untracked)",
+)
 @click.option("--current", is_flag=True, help="Remove current project's venv")
 @click.argument("path", required=False, type=click.Path())
 @common_options
