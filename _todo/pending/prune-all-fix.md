@@ -229,7 +229,7 @@ def prune_valid(
         echo("")
 
     # Confirm
-    if not yes and not dry_run:
+    if not dry_run:
         if not confirm("Remove these valid venvs?", default=False, yes_flag=yes):
             info("Aborted")
             return
@@ -318,9 +318,18 @@ def prune_all(...):
                 echo(f"    Size: {format_bytes(v['disk_usage'])}")
         echo("")
 
-    # Confirm
-    if not yes and not dry_run:
-        if not confirm("Remove ALL venvs? This cannot be undone.", default=False, yes_flag=yes):
+    # Confirm - ALWAYS require confirmation for --all, even with --yes
+    if not dry_run:
+        # Override --yes flag for safety
+        echo("")
+        warning("⚠️  DANGER: This will delete EVERYTHING")
+        echo("")
+        typed_confirmation = click.prompt(
+            'Type "yes" to confirm deletion of ALL venvs',
+            type=str,
+            default="",
+        )
+        if typed_confirmation.lower() != "yes":
             info("Aborted")
             return
 
@@ -511,24 +520,25 @@ Remove these valid venvs? [y/N]: y
 4. ✓ Mode validation prevents invalid combinations
 5. ✓ Help text clearly explains each mode
 
-## Questions for User
+## User Decisions (APPROVED)
 
-1. **Naming**: Is `--valid` the right name? Alternatives: `--active`, `--current-only`, `--managed`?
+1. **Naming**: `--valid` confirmed ✓
 
-valid is ok
+2. **Confirmation prompt**: `--all` must ALWAYS require confirmation, even with `--yes` flag ✓
+   - Requires special handling to override `--yes` behavior
+   - Add explicit prompt: "This will delete EVERYTHING. Type 'yes' to confirm:"
 
-2. **Confirmation prompt**: Should `--all` always require confirmation, even with `--yes`? (More cautious approach)
+3. **Cache clearing**: `--valid` MUST also clear cache entries for removed venvs ✓
+   - Updated implementation in Step 2
 
-yes
+4. **Untracked venvs in `--valid`**: Correctly ignores them (they're orphans) ✓
 
-3. **Cache clearing**: Should `--valid` also clear matching cache entries, or only `--all` clears the cache?
+5. **Disk scan performance**: No `--skip-disk-scan` flag needed ✓
 
-yes, also clear from cache
+---
 
-4. **Untracked venvs in `--valid`**: Currently `--valid` ignores untracked (since they're orphans by definition). Correct?
+## PROPOSAL APPROVED - Ready for Implementation
 
-yes
-
-5. **Disk scan performance**: `find_untracked_venvs()` scans the entire venv directory. For users with hundreds of venvs, this might be slow. Should we add a `--skip-disk-scan` flag for performance?
-
-no
+**Approved by**: User
+**Approval date**: 2025-12-05
+**Status**: Moving to pending phase
