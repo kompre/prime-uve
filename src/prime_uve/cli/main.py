@@ -172,6 +172,36 @@ def shell(
     shell_command(ctx, shell, verbose, yes, dry_run, json_output)
 
 
+@cli.command()
+@common_options
+@handle_errors
+@click.pass_context
+def register(
+    ctx,
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+):
+    """Register current project with cache from existing .env.uve.
+
+    This command reads the existing .env.uve file and ensures the project
+    is properly tracked in cache.json. Useful for fixing cache desync issues.
+
+    The cache is automatically kept in sync when running 'prime-uve list' or
+    'prime-uve prune' from within a project, so manual registration is rarely
+    needed. Use this command for verbose feedback or when troubleshooting.
+
+    Usage:
+        prime-uve register           # Register current project
+        prime-uve register --dry-run # Preview what would be registered
+        prime-uve register --verbose # Show detailed information
+    """
+    from prime_uve.cli.register import register_command
+
+    register_command(ctx, verbose, yes, dry_run, json_output)
+
+
 @cli.group()
 def configure():
     """Configure integrations (VS Code, etc.)."""
