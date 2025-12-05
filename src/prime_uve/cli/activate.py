@@ -1,11 +1,10 @@
 """Activate command implementation for prime-uve."""
 
 import sys
-from pathlib import Path
 
 import click
 
-from prime_uve.cli.output import echo, error
+from prime_uve.cli.output import echo
 from prime_uve.core.env_file import EnvFileError, find_env_file_strict, read_env_file
 from prime_uve.core.paths import expand_path_variables
 from prime_uve.core.project import ProjectError, find_project_root, get_project_metadata
@@ -64,7 +63,7 @@ def activate_command(
         env_vars = read_env_file(env_file)
         if not env_vars:
             raise click.ClickException(
-                "Empty .env.uve file\n" "Run 'prime-uve init' to configure the project."
+                "Empty .env.uve file\nRun 'prime-uve init' to configure the project."
             )
 
         # 3. Extract venv path and validate

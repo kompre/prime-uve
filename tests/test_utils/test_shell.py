@@ -1,11 +1,8 @@
 """Tests for shell detection and command generation utilities."""
 
-import os
 import sys
-from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 from prime_uve.utils.shell import (
     detect_shell,
@@ -171,13 +168,17 @@ class TestGenerateExportCommand:
 
     def test_bash_preserves_variable_syntax(self):
         """Test that bash preserves ${VAR} syntax."""
-        cmd = generate_export_command("bash", "UV_PROJECT_ENVIRONMENT", "${HOME}/venvs/test")
+        cmd = generate_export_command(
+            "bash", "UV_PROJECT_ENVIRONMENT", "${HOME}/venvs/test"
+        )
         assert "${HOME}" in cmd
         assert 'export UV_PROJECT_ENVIRONMENT="${HOME}/venvs/test"' == cmd
 
     def test_export_with_special_characters(self):
         """Test exporting values with special characters."""
-        cmd = generate_export_command("bash", "DB_URL", "postgresql://user:pass@localhost/db")
+        cmd = generate_export_command(
+            "bash", "DB_URL", "postgresql://user:pass@localhost/db"
+        )
         assert 'export DB_URL="postgresql://user:pass@localhost/db"' in cmd
 
     def test_unknown_shell_falls_back_to_bash(self):

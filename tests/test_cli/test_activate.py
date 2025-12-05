@@ -1,7 +1,6 @@
 """Tests for prime-uve activate command."""
 
 import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -43,7 +42,11 @@ def mock_project_with_venv(tmp_path):
 
     # Create .env.uve with venv path
     env_file = project_dir / ".env.uve"
-    env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_dir}\n" f"DATABASE_URL=postgresql://localhost/db\n" f"API_KEY=secret123\n")
+    env_file.write_text(
+        f"UV_PROJECT_ENVIRONMENT={venv_dir}\n"
+        f"DATABASE_URL=postgresql://localhost/db\n"
+        f"API_KEY=secret123\n"
+    )
 
     return {
         "project_dir": project_dir,
@@ -68,7 +71,9 @@ def test_activate_bash_output(runner, mock_project_with_venv, monkeypatch):
     assert "export API_KEY=" in result.output
     assert "source" in result.output
     # Use os-agnostic path check (Windows uses backslashes)
-    assert "activate" in result.output and ("bin" in result.output or "Scripts" in result.output)
+    assert "activate" in result.output and (
+        "bin" in result.output or "Scripts" in result.output
+    )
 
 
 def test_activate_zsh_output(runner, mock_project_with_venv, monkeypatch):
@@ -197,7 +202,10 @@ def test_activate_no_env_file(runner, tmp_path, monkeypatch):
     result = runner.invoke(cli, ["activate"])
 
     assert result.exit_code != 0
-    assert "not initialized" in result.output.lower() or "no .env.uve" in result.output.lower()
+    assert (
+        "not initialized" in result.output.lower()
+        or "no .env.uve" in result.output.lower()
+    )
 
 
 def test_activate_empty_env_file(runner, tmp_path, monkeypatch):
@@ -262,13 +270,20 @@ def test_activate_venv_doesnt_exist(runner, tmp_path, monkeypatch):
 # Variable Expansion Tests
 
 
-def test_activate_expands_home_for_activation(runner, mock_project_with_venv, monkeypatch, tmp_path):
+def test_activate_expands_home_for_activation(
+    runner, mock_project_with_venv, monkeypatch, tmp_path
+):
     """Test that ${HOME} is expanded in venv path for activation."""
     # Update .env.uve to use ${HOME} variable
     env_file = mock_project_with_venv["env_file"]
-    venv_relative = str(mock_project_with_venv["venv_dir"]).replace(str(tmp_path), "${HOME}")
+    venv_relative = str(mock_project_with_venv["venv_dir"]).replace(
+        str(tmp_path), "${HOME}"
+    )
 
-    env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_relative}\n" f"DATABASE_URL=postgresql://localhost/db\n")
+    env_file.write_text(
+        f"UV_PROJECT_ENVIRONMENT={venv_relative}\n"
+        f"DATABASE_URL=postgresql://localhost/db\n"
+    )
 
     monkeypatch.chdir(mock_project_with_venv["project_dir"])
     monkeypatch.setenv("SHELL", "/bin/bash")
@@ -280,10 +295,14 @@ def test_activate_expands_home_for_activation(runner, mock_project_with_venv, mo
     # Should still work because expansion happens for activation
 
 
-def test_activate_keeps_variables_unexpanded_in_exports(runner, mock_project_with_venv, monkeypatch, tmp_path):
+def test_activate_keeps_variables_unexpanded_in_exports(
+    runner, mock_project_with_venv, monkeypatch, tmp_path
+):
     """Test that variables remain unexpanded in export commands."""
     # Use ${HOME} in the venv path
-    venv_relative = str(mock_project_with_venv["venv_dir"]).replace(str(tmp_path), "${HOME}")
+    venv_relative = str(mock_project_with_venv["venv_dir"]).replace(
+        str(tmp_path), "${HOME}"
+    )
 
     env_file = mock_project_with_venv["env_file"]
     env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_relative}\n")
@@ -324,7 +343,9 @@ def test_activate_with_multiple_env_vars(runner, mock_project_with_venv, monkeyp
     env_file = mock_project_with_venv["env_file"]
     venv_dir = mock_project_with_venv["venv_dir"]
 
-    env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_dir}\n" f"VAR1=value1\n" f"VAR2=value2\n" f"VAR3=value3\n")
+    env_file.write_text(
+        f"UV_PROJECT_ENVIRONMENT={venv_dir}\nVAR1=value1\nVAR2=value2\nVAR3=value3\n"
+    )
 
     monkeypatch.chdir(mock_project_with_venv["project_dir"])
     monkeypatch.setenv("SHELL", "/bin/bash")

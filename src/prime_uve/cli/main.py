@@ -119,7 +119,12 @@ def prune(
 @handle_errors
 @click.pass_context
 def activate(
-    ctx, shell: Optional[str], verbose: bool, yes: bool, dry_run: bool, json_output: bool
+    ctx,
+    shell: Optional[str],
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
 ):
     """Output activation command for current venv.
 

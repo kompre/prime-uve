@@ -71,7 +71,7 @@ def escape_shell_value(value: str, shell: str) -> str:
         # Escape backslashes, double quotes, and dollar signs
         # Note: We need to preserve variable syntax like ${HOME}
         # So we escape literal $ but not ${ } patterns
-        escaped = value.replace('\\', '\\\\').replace('"', '\\"')
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
         # Don't escape $ in ${VAR} patterns, only standalone $
         # This is tricky - for now, don't escape $ at all since we want
         # variables like ${HOME} to remain unexpanded in the export
@@ -111,8 +111,10 @@ def generate_export_command(shell: str, var_name: str, var_value: str) -> str:
     elif shell == "cmd":
         # CMD uses % for variables, not $
         # Replace ${HOME} with %HOME%
-        value_cmd = value_escaped.replace("${HOME}", "%HOME%").replace("$HOME", "%HOME%")
-        return f'set {var_name}={value_cmd}'
+        value_cmd = value_escaped.replace("${HOME}", "%HOME%").replace(
+            "$HOME", "%HOME%"
+        )
+        return f"set {var_name}={value_cmd}"
     else:
         # Fallback to bash syntax
         return f'export {var_name}="{value_escaped}"'
