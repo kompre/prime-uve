@@ -8,6 +8,7 @@ from typing import Optional
 import click
 
 from prime_uve.cli.output import echo, error, info, success, warning, print_json
+from prime_uve.cli.register import auto_register_current_project
 from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import find_env_file, read_env_file, write_env_file
 from prime_uve.core.paths import expand_path_variables, get_venv_base_dir
@@ -727,6 +728,14 @@ def prune_command(
         dry_run: Dry run mode
         json_output: Output as JSON
     """
+    # 0. Auto-register current project before pruning
+    try:
+        cache = Cache()
+        auto_register_current_project(cache)
+    except Exception:
+        # Continue even if auto-registration fails
+        pass
+
     # Validate options - exactly one mode must be specified
     modes = [all_venvs, orphan, current, path is not None]
     if sum(modes) == 0:

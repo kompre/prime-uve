@@ -8,6 +8,7 @@ from typing import Optional
 import click
 
 from prime_uve.cli.output import echo, error, info, print_json
+from prime_uve.cli.register import auto_register_current_project
 from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import read_env_file
 from prime_uve.core.paths import expand_path_variables, get_venv_base_dir
@@ -406,6 +407,14 @@ def list_command(
         dry_run: Dry run mode (unused here)
         json_output: Output as JSON
     """
+    # 0. Auto-register current project if present
+    try:
+        cache = Cache()
+        auto_register_current_project(cache)
+    except Exception:
+        # Continue even if auto-registration fails
+        pass
+
     # 1. Load cache
     try:
         cache = Cache()
