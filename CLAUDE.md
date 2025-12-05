@@ -61,21 +61,63 @@ uv tool install prime-uve
 
 ## Task Management Workflow
 
-This project uses a structured task workflow in the `_todo/` directory:
+This project uses a structured task workflow in the `_todo/` directory. **CRITICAL**: Follow this process exactly to keep the todo folder organized.
 
 ### Directory Structure
 - `_todo/proposal/` - Task proposals awaiting approval
 - `_todo/pending/` - Active development tasks with progress updates
 - `_todo/completed/YYYY-MM-DD/` - Archived completed tasks
 
-### Workflow
-1. User adds task to `_todo/todo.md`
-2. Claude creates detailed proposal in `proposal/[task-name].md`
-3. User reviews and approves
-4. Claude moves to `pending/` and implements with progress updates
-5. Claude completes and archives to `completed/YYYY-MM-DD/` with summary
+### Workflow with Branching
 
-Each task file should include original objective, implementation plan, progress updates, and final summary.
+**IMPORTANT**: Each task gets its own feature branch. This keeps the todo folder in sync across branches.
+
+1. **Proposal Phase**
+   - User adds task to `_todo/todo.md`
+   - Claude creates detailed proposal in `proposal/[task-name].md`
+   - User reviews and approves
+
+2. **Start Work Phase** (CRITICAL PROCESS)
+   - Move task from `proposal/` to `pending/[task-name].md`
+   - Commit the move: `git add _todo && git commit -m "Move [task-name] to pending"`
+   - Push to main/dev branch: `git push`
+   - Create feature branch: `git checkout -b feature/[task-name]`
+   - Now begin implementation work
+
+3. **Development Phase**
+   - Make code changes in the feature branch
+   - Update `pending/[task-name].md` with progress notes
+   - Commit code changes regularly
+   - Push feature branch: `git push -u origin feature/[task-name]`
+
+4. **Completion Phase**
+   - Create PR for the feature branch
+   - After PR is merged to main/dev
+   - Switch back to main/dev: `git checkout main` (or `dev`)
+   - Pull latest: `git pull`
+   - Move task from `pending/` to `completed/YYYY-MM-DD/[task-name].md`
+   - Add completion summary to the task file
+   - Commit: `git add _todo && git commit -m "Archive completed task: [task-name]"`
+   - Push: `git push`
+
+### Why This Process Matters
+
+- **Todo folder stays clean**: Each task file exists in only one location per branch
+- **Git history is clear**: Task progression is tracked through commits
+- **No merge conflicts**: Moving tasks before branching prevents conflicts
+- **Synchronization**: Main/dev branch always has the source of truth for task status
+
+### Task File Contents
+
+Each task file should include:
+- Original objective
+- Implementation plan
+- Progress updates (in pending phase)
+- Final summary (in completed phase)
+
+### Quick Reference
+
+Use the `/todo-init` slash command to start work on an approved task - it automates the branching workflow.
 
 ## Architecture Notes
 
