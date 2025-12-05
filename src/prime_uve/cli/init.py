@@ -122,6 +122,9 @@ def init_command(
         return
 
     # 7. Create/update .env.uve
+    # Track whether file existed before
+    env_file_existed = env_file.exists()
+
     # Use update_env_file_preserve_format to preserve file structure, comments, and order
     update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": venv_path})
 
@@ -147,7 +150,7 @@ def init_command(
             },
             "env_file": {
                 "path": str(env_file),
-                "created": True,
+                "created": not env_file_existed,
             },
             "cache": {"added": True},
         }
@@ -156,7 +159,10 @@ def init_command(
         success(f"Project: {project_name}")
         success(f"Project root: {project_root}")
         success(f"Venv path: {venv_path}")
-        success("Created .env.uve")
+        if env_file_existed:
+            success("Updated .env.uve")
+        else:
+            success("Created .env.uve")
         success("Added to cache")
 
         echo("\nNext steps:")
