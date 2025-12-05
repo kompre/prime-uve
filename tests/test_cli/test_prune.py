@@ -370,10 +370,10 @@ class TestPruneAll:
 
     @patch("prime_uve.cli.prune.auto_register_current_project")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_all_requires_typed_confirmation(
+    def test_prune_all_respects_yes_flag(
         self, mock_cache_class, mock_auto_register, runner, tmp_path
     ):
-        """Test that --all requires typing 'yes', not just yes/no prompt."""
+        """Test that --all respects --yes flag to skip confirmation."""
         mock_cache = Mock()
         mock_cache.list_all.return_value = {
             str(tmp_path / "project1"): {
@@ -385,11 +385,11 @@ class TestPruneAll:
         }
         mock_cache_class.return_value = mock_cache
 
-        # Test that --yes flag is ignored for --all
+        # Test that --yes flag skips confirmation
         result = runner.invoke(cli, ["prune", "--all", "--yes"])
 
-        # Should still require confirmation, not skip it
-        assert result.exit_code == 0 or "Type \"yes\" to confirm" in result.output
+        # Should succeed without prompting
+        assert result.exit_code == 0
 
     @patch("prime_uve.cli.prune.auto_register_current_project")
     @patch("prime_uve.cli.prune.Cache")

@@ -195,7 +195,7 @@ def prune_all(
     Args:
         ctx: Click context
         verbose: Show verbose output
-        yes: Skip confirmation (overridden for --all, always requires typed confirmation)
+        yes: Skip confirmation
         dry_run: Dry run mode
         json_output: Output as JSON
     """
@@ -257,9 +257,8 @@ def prune_all(
                 echo(f"    Size: {format_bytes(v['disk_usage'])}")
         echo("")
 
-    # Confirm - ALWAYS require confirmation for --all, even with --yes
-    if not dry_run:
-        # Override --yes flag for safety
+    # Confirm
+    if not dry_run and not yes:
         echo("")
         warning("DANGER: This will delete EVERYTHING")
         echo("")
