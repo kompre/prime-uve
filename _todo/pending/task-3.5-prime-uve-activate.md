@@ -660,7 +660,7 @@ This exports all variables from `.env.uve` and activates the venv.
 ```bash
 eval "$(prime-uve activate --shell bash)"
 ```
-```
+
 
 ## Success Metrics
 

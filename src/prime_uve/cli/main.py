@@ -143,6 +143,32 @@ def activate(
     activate_command(ctx, shell, verbose, yes, dry_run, json_output)
 
 
+@cli.command()
+@click.option("--shell", type=str, help="Shell to spawn (bash, zsh, fish, pwsh, cmd)")
+@common_options
+@handle_errors
+@click.pass_context
+def shell(
+    ctx, shell: Optional[str], verbose: bool, yes: bool, dry_run: bool, json_output: bool
+):
+    """Spawn a new shell with venv activated.
+
+    Starts a new shell session with:
+      • All variables from .env.uve loaded
+      • Virtual environment activated
+      • Prompt showing venv name
+
+    Usage:
+        prime-uve shell           # Auto-detect shell
+        prime-uve shell --shell bash  # Force specific shell
+
+    Type 'exit' to leave the activated shell and return to your original shell.
+    """
+    from prime_uve.cli.shell import shell_command
+
+    shell_command(ctx, shell, verbose, yes, dry_run, json_output)
+
+
 @cli.group()
 def configure():
     """Configure integrations (VS Code, etc.)."""
