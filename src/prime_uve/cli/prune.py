@@ -377,7 +377,7 @@ def prune_valid(
     # Confirm
     if not dry_run:
         if not yes:
-            if not click.confirm("Remove these valid venvs?", default=False):
+            if not click.confirm(f"Remove {len(valid_venvs)} valid venv(s)?", default=False):
                 info("Aborted")
                 return
 
@@ -490,8 +490,8 @@ def prune_orphan(
 
     # Confirm unless --yes
     if not yes and not dry_run:
-        if not click.confirm("Continue?"):
-            info("Aborted.")
+        if not click.confirm(f"Remove {len(orphaned_venvs)} orphaned venv(s)?"):
+            info("Aborted")
             return
 
     if dry_run and not json_output:
@@ -630,8 +630,8 @@ def prune_current(
 
     # Confirm unless --yes
     if not yes and not dry_run:
-        if not click.confirm(f"Remove venv for '{project_name}' and clear .env.uve?"):
-            info("Aborted.")
+        if not click.confirm("Remove venv for current project?"):
+            info("Aborted")
             return
 
     if dry_run and not json_output:
@@ -740,8 +740,8 @@ def prune_path(
 
     # Confirm unless --yes
     if not yes and not dry_run:
-        if not click.confirm(f"Remove venv at '{venv_path_to_remove}'?"):
-            info("Aborted.")
+        if not click.confirm("Remove this venv?"):
+            info("Aborted")
             return
 
     if dry_run and not json_output:
