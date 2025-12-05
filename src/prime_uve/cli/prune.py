@@ -262,7 +262,9 @@ def prune_all(
     # 1. Add cached venvs
     for project_path, entry in cache_entries.items():
         venv_path_expanded = expand_path_variables(entry["venv_path"])
-        disk_usage = get_disk_usage(venv_path_expanded) if venv_path_expanded.exists() else 0
+        disk_usage = (
+            get_disk_usage(venv_path_expanded) if venv_path_expanded.exists() else 0
+        )
         all_venvs.append(
             {
                 "project_name": entry["project_name"],
@@ -312,7 +314,9 @@ def prune_all(
     failed = []
 
     for v in all_venvs:
-        success_flag, error_msg = remove_venv_directory(str(v["venv_path_expanded"]), dry_run=False)
+        success_flag, error_msg = remove_venv_directory(
+            str(v["venv_path_expanded"]), dry_run=False
+        )
         if success_flag:
             removed.append(v["project_name"])
         else:
@@ -381,7 +385,9 @@ def prune_valid(
     for project_path, entry in cache_entries.items():
         if not is_orphaned(project_path, entry):
             venv_path_expanded = expand_path_variables(entry["venv_path"])
-            disk_usage = get_disk_usage(venv_path_expanded) if venv_path_expanded.exists() else 0
+            disk_usage = (
+                get_disk_usage(venv_path_expanded) if venv_path_expanded.exists() else 0
+            )
             valid_venvs.append(
                 {
                     "project_path": project_path,
@@ -408,7 +414,9 @@ def prune_valid(
     # Confirm
     if not dry_run:
         if not yes:
-            if not click.confirm(f"Remove {len(valid_venvs)} valid venv(s)?", default=False):
+            if not click.confirm(
+                f"Remove {len(valid_venvs)} valid venv(s)?", default=False
+            ):
                 info("Aborted")
                 return
 
@@ -421,7 +429,9 @@ def prune_valid(
     failed = []
 
     for v in valid_venvs:
-        success_flag, error_msg = remove_venv_directory(str(v["venv_path_expanded"]), dry_run=False)
+        success_flag, error_msg = remove_venv_directory(
+            str(v["venv_path_expanded"]), dry_run=False
+        )
         if success_flag:
             cache.remove_mapping(Path(v["project_path"]))
             removed.append(v["project_name"])
@@ -857,7 +867,9 @@ def prune_command(
     if sum(modes) == 0:
         error("Must specify one mode: --all, --valid, --orphan, --current, or <path>")
         echo("\nExamples:")
-        echo("  prime-uve prune --all          # Remove ALL venvs (tracked and untracked)")
+        echo(
+            "  prime-uve prune --all          # Remove ALL venvs (tracked and untracked)"
+        )
         echo("  prime-uve prune --valid        # Remove only valid venvs")
         echo("  prime-uve prune --orphan       # Remove only orphaned venvs")
         echo("  prime-uve prune --current      # Remove current project's venv")
