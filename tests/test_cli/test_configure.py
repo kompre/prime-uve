@@ -492,7 +492,6 @@ def test_configure_vscode_uses_environment_variables(runner, mock_project, monke
 
     # Update .env.uve to use ${HOME} variable
     env_file = mock_project / ".env.uve"
-    venv_dir = tmp_path / "venvs" / "test_venv"
 
     # Write with environment variable syntax
     env_file.write_text('UV_PROJECT_ENVIRONMENT=${HOME}/custom/venvs/test_venv\n')
