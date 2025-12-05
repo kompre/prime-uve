@@ -168,8 +168,14 @@ def shell_command(
                 if activate_script.exists():
                     # Run PowerShell and dot-source the activation script
                     subprocess.run(
-                        ["pwsh", "-NoLogo", "-NoExit", "-Command", f". '{activate_script}'"],
-                        env=new_env
+                        [
+                            "pwsh",
+                            "-NoLogo",
+                            "-NoExit",
+                            "-Command",
+                            f". '{activate_script}'",
+                        ],
+                        env=new_env,
                     )
                 else:
                     # Fallback if activation script doesn't exist
