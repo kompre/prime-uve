@@ -486,7 +486,9 @@ def test_configure_vscode_preserves_workspace_with_comments(
     assert "python.defaultInterpreterPath" in data["settings"]
 
 
-def test_configure_vscode_uses_environment_variables(runner, mock_project, monkeypatch, tmp_path):
+def test_configure_vscode_uses_environment_variables(
+    runner, mock_project, monkeypatch, tmp_path
+):
     """Test that interpreter path uses environment variables for portability."""
     monkeypatch.chdir(mock_project)
 
@@ -494,7 +496,7 @@ def test_configure_vscode_uses_environment_variables(runner, mock_project, monke
     env_file = mock_project / ".env.uve"
 
     # Write with environment variable syntax
-    env_file.write_text('UV_PROJECT_ENVIRONMENT=${HOME}/custom/venvs/test_venv\n')
+    env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/custom/venvs/test_venv\n")
 
     # Mock HOME environment variable to point to tmp_path
     with monkeypatch.context() as m:

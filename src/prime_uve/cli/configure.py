@@ -46,7 +46,7 @@ def _get_interpreter_path_variable_form(venv_path_var: str) -> str:
         Interpreter path with environment variables preserved
     """
     # Normalize path separators and ensure no trailing slash
-    venv_path_var = venv_path_var.rstrip('/\\')
+    venv_path_var = venv_path_var.rstrip("/\\")
 
     if sys.platform == "win32":
         # Use forward slashes for consistency in VS Code
