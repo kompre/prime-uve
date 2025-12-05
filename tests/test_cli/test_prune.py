@@ -266,12 +266,14 @@ class TestPruneAll:
     """Tests for prune_all function."""
 
     @patch("prime_uve.cli.prune.auto_register_current_project")
+    @patch("prime_uve.cli.prune.find_untracked_venvs")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_all_empty_cache(self, mock_cache_class, mock_auto_register, runner):
-        """Test prune --all with empty cache."""
+    def test_prune_all_empty_cache(self, mock_cache_class, mock_find_untracked, mock_auto_register, runner):
+        """Test prune --all with empty cache and no untracked venvs."""
         mock_cache = Mock()
         mock_cache.list_all.return_value = {}
         mock_cache_class.return_value = mock_cache
+        mock_find_untracked.return_value = []  # No untracked venvs
 
         result = runner.invoke(cli, ["prune", "--all"], input="yes\n")
 

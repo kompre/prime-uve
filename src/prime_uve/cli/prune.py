@@ -259,15 +259,7 @@ def prune_all(
 
     # Confirm
     if not dry_run and not yes:
-        echo("")
-        warning("DANGER: This will delete EVERYTHING")
-        echo("")
-        typed_confirmation = click.prompt(
-            'Type "yes" to confirm deletion of ALL venvs',
-            type=str,
-            default="",
-        )
-        if typed_confirmation.lower() != "yes":
+        if not click.confirm(f"Remove all {len(all_venvs)} venv(s)?", default=False):
             info("Aborted")
             return
 
