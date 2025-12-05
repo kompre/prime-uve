@@ -118,7 +118,8 @@ def test_init_success_message_shows_next_steps(
         output = result.output
         assert "Next steps:" in output
         assert "uve sync" in output
-        assert "Commit .env.uve" in output
+        assert "Created .env.uve" in output
+        assert "Expanded:" in output
 
 
 # Already Initialized Tests
