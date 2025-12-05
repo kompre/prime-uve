@@ -162,7 +162,6 @@ def init_command(
         echo("\nNext steps:")
         echo("  1. Use 'uve' instead of 'uv' for all commands")
         echo("  2. Run 'uve sync' to create venv and install dependencies")
-        echo("  3. Commit .env.uve to version control")
         echo("\nExample:")
         echo("  uve sync                # Creates venv and installs dependencies")
         echo("  uve add requests        # Add a package")
