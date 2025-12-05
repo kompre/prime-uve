@@ -10,7 +10,7 @@ from prime_uve.utils.vscode import (
     find_workspace_files,
     read_workspace,
     strip_json_comments,
-    update_python_interpreter,
+    update_workspace_settings,
     write_workspace,
 )
 
@@ -227,19 +227,21 @@ def test_write_workspace_preserves_unicode(tmp_path):
 # Setting Update Tests
 
 
-def test_update_python_interpreter_new():
-    """Test adding python.defaultInterpreterPath to empty settings."""
+def test_update_workspace_settings_new():
+    """Test adding all Python settings to empty workspace."""
     workspace = {"folders": [{"path": "."}]}
     interpreter_path = Path("/path/to/venv/bin/python")
 
-    result = update_python_interpreter(workspace, interpreter_path)
+    result = update_workspace_settings(workspace, interpreter_path)
 
     assert "settings" in result
     assert result["settings"]["python.defaultInterpreterPath"] == str(interpreter_path)
+    assert result["settings"]["python.terminal.activateEnvironment"] is True
+    assert result["settings"]["python.envFile"] == "${workspaceFolder}/.env.uve"
 
 
-def test_update_python_interpreter_existing():
-    """Test updating existing python.defaultInterpreterPath."""
+def test_update_workspace_settings_existing():
+    """Test updating existing Python settings."""
     workspace = {
         "folders": [{"path": "."}],
         "settings": {
@@ -249,15 +251,17 @@ def test_update_python_interpreter_existing():
     }
     interpreter_path = Path("/new/path/bin/python")
 
-    result = update_python_interpreter(workspace, interpreter_path)
+    result = update_workspace_settings(workspace, interpreter_path)
 
     assert result["settings"]["python.defaultInterpreterPath"] == str(interpreter_path)
+    assert result["settings"]["python.terminal.activateEnvironment"] is True
+    assert result["settings"]["python.envFile"] == "${workspaceFolder}/.env.uve"
     # Verify other settings preserved
     assert result["settings"]["python.linting.enabled"] is True
 
 
-def test_update_python_interpreter_preserves_other_settings():
-    """Test that updating interpreter preserves other settings."""
+def test_update_workspace_settings_preserves_other_settings():
+    """Test that updating workspace settings preserves non-Python settings."""
     workspace = {
         "folders": [{"path": "."}],
         "settings": {
@@ -267,15 +271,17 @@ def test_update_python_interpreter_preserves_other_settings():
     }
     interpreter_path = Path("/path/to/python")
 
-    result = update_python_interpreter(workspace, interpreter_path)
+    result = update_workspace_settings(workspace, interpreter_path)
 
     assert result["settings"]["python.defaultInterpreterPath"] == str(interpreter_path)
+    assert result["settings"]["python.terminal.activateEnvironment"] is True
+    assert result["settings"]["python.envFile"] == "${workspaceFolder}/.env.uve"
     assert result["settings"]["editor.fontSize"] == 14
     assert result["settings"]["terminal.integrated.shell.linux"] == "/bin/bash"
 
 
 def test_create_default_workspace():
-    """Test creating default workspace structure."""
+    """Test creating default workspace structure with all Python settings."""
     project_root = Path("/path/to/project")
     interpreter_path = Path("/path/to/venv/bin/python")
 
@@ -286,10 +292,12 @@ def test_create_default_workspace():
     assert result["folders"][0]["path"] == "."
     assert "settings" in result
     assert result["settings"]["python.defaultInterpreterPath"] == str(interpreter_path)
+    assert result["settings"]["python.terminal.activateEnvironment"] is True
+    assert result["settings"]["python.envFile"] == "${workspaceFolder}/.env.uve"
 
 
-def test_create_default_workspace_minimal():
-    """Test that default workspace is minimal and doesn't include extra settings."""
+def test_create_default_workspace_complete():
+    """Test that default workspace includes all required Python settings."""
     project_root = Path("/path/to/project")
     interpreter_path = Path("/path/to/venv/bin/python")
 
@@ -297,8 +305,12 @@ def test_create_default_workspace_minimal():
 
     # Should only have folders and settings
     assert set(result.keys()) == {"folders", "settings"}
-    # Settings should only have python.defaultInterpreterPath
-    assert set(result["settings"].keys()) == {"python.defaultInterpreterPath"}
+    # Settings should have all three Python settings
+    assert set(result["settings"].keys()) == {
+        "python.defaultInterpreterPath",
+        "python.terminal.activateEnvironment",
+        "python.envFile",
+    }
 
 
 # Platform-Specific Tests
@@ -309,7 +321,7 @@ def test_interpreter_path_format():
     workspace = {"folders": []}
     interpreter_path = Path("/test/path/to/python")
 
-    result = update_python_interpreter(workspace, interpreter_path)
+    result = update_workspace_settings(workspace, interpreter_path)
 
     # Should be string, not Path object
     assert isinstance(result["settings"]["python.defaultInterpreterPath"], str)
