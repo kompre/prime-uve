@@ -78,8 +78,17 @@ def list(
 
 
 @cli.command()
-@click.option("--all", "all_venvs", is_flag=True, help="Remove all venvs")
-@click.option("--orphan", is_flag=True, help="Remove orphaned venvs only")
+@click.option(
+    "--all", "all_venvs", is_flag=True, help="Remove ALL venvs (tracked and untracked)"
+)
+@click.option(
+    "--valid", is_flag=True, help="Remove only valid venvs (cache matches .env.uve)"
+)
+@click.option(
+    "--orphan",
+    is_flag=True,
+    help="Remove only orphaned venvs (cache mismatch or untracked)",
+)
 @click.option("--current", is_flag=True, help="Remove current project's venv")
 @click.argument("path", required=False, type=click.Path())
 @common_options
@@ -88,6 +97,7 @@ def list(
 def prune(
     ctx,
     all_venvs: bool,
+    valid: bool,
     orphan: bool,
     current: bool,
     path: Optional[str],
@@ -99,15 +109,16 @@ def prune(
     """Clean up venv directories.
 
     Must specify one mode:
-    - --all: Remove all managed venvs
-    - --orphan: Remove only orphaned venvs (cache doesn't match .env.uve)
+    - --all: Remove ALL venvs (both tracked and untracked)
+    - --valid: Remove only valid venvs (cache matches .env.uve)
+    - --orphan: Remove only orphaned venvs (cache mismatch or untracked)
     - --current: Remove venv for current project
     - <path>: Remove venv at specific path
     """
     from prime_uve.cli.prune import prune_command
 
     prune_command(
-        ctx, all_venvs, orphan, current, path, verbose, yes, dry_run, json_output
+        ctx, all_venvs, valid, orphan, current, path, verbose, yes, dry_run, json_output
     )
 
 

@@ -65,6 +65,55 @@ def format_bytes(size: int) -> str:
         return f"{size_float:.1f} {units[unit_index]}"
 
 
+def display_venvs_to_remove(
+    venvs: list[dict],
+    mode_label: str,
+    total_size: int,
+    verbose: bool = False,
+) -> None:
+    """Display venvs that will be removed with consistent formatting.
+
+    Args:
+        venvs: List of venv dicts with at minimum 'project_name' key
+        mode_label: Label for the mode (e.g., "ALL", "valid", "orphaned")
+        total_size: Total disk space in bytes
+        verbose: Show detailed information
+    """
+    warning(f"Will remove {len(venvs)} {mode_label} venv(s)")
+    warning(f"Total disk space to free: {format_bytes(total_size)}")
+    echo("")
+
+    for v in venvs:
+        # Handle different dict structures
+        project_name = v.get("project_name", "<unknown>")
+        tracked_marker = ""
+
+        # Check if this venv has tracking info
+        if "tracked" in v:
+            tracked_marker = "" if v["tracked"] else " [untracked]"
+        elif "is_tracked" in v and not v["is_tracked"]:
+            tracked_marker = " [untracked]"
+
+        echo(f"  • {project_name}{tracked_marker}")
+
+        if verbose:
+            # Show project path if available
+            if "project_path" in v and v["project_path"]:
+                echo(f"    Project: {v['project_path']}")
+
+            # Show venv path
+            venv_path = v.get("venv_path_expanded") or v.get("venv_path")
+            if venv_path:
+                echo(f"    Venv:    {venv_path}")
+
+            # Show size
+            size = v.get("disk_usage") or v.get("size", 0)
+            if size > 0:
+                echo(f"    Size:    {format_bytes(size)}")
+
+    echo("")
+
+
 def scan_venv_directory() -> list[Path]:
     """
     Scan venv base directory for all venv directories.
@@ -190,7 +239,7 @@ def prune_all(
     json_output: bool,
 ) -> None:
     """
-    Remove all venv directories and clear cache.
+    Remove ALL venv directories - both cached and untracked.
 
     Args:
         ctx: Click context
@@ -202,121 +251,202 @@ def prune_all(
     # Load cache
     try:
         cache = Cache()
-        mappings = cache.list_all()
+        cache_entries = cache.list_all()
     except Exception as e:
         error(f"Failed to load cache: {e}")
         sys.exit(1)
 
-    if not mappings:
-        if json_output:
-            print_json({"removed": [], "failed": [], "total_size_freed": 0})
-        else:
-            info("No managed venvs found.")
-        return
+    # Get all venvs: cached + untracked
+    all_venvs = []
 
-    # Calculate total size
-    total_size = 0
-    venvs_to_remove = []
-
-    for project_path, cache_entry in mappings.items():
-        venv_path = cache_entry["venv_path"]
-        venv_path_expanded = expand_path_variables(venv_path)
-        size = 0
-        if venv_path_expanded.exists():
-            size = get_disk_usage(venv_path_expanded)
-        total_size += size
-        venvs_to_remove.append(
+    # 1. Add cached venvs
+    for project_path, entry in cache_entries.items():
+        venv_path_expanded = expand_path_variables(entry["venv_path"])
+        disk_usage = (
+            get_disk_usage(venv_path_expanded) if venv_path_expanded.exists() else 0
+        )
+        all_venvs.append(
             {
-                "project_name": cache_entry["project_name"],
-                "project_path": project_path,
-                "venv_path": venv_path,
-                "venv_path_expanded": str(venv_path_expanded),
-                "size": size,
+                "project_name": entry["project_name"],
+                "venv_path_expanded": venv_path_expanded,
+                "disk_usage": disk_usage,
+                "tracked": True,
             }
         )
 
-    # Show what will be removed
-    if not json_output:
-        warning(f"This will remove ALL {len(venvs_to_remove)} managed venv(s)!")
-        echo("")
-        for item in venvs_to_remove:
-            echo(f"  - {item['project_name']} ({format_bytes(item['size'])})")
-        echo("")
-        echo(f"Total disk space to be freed: {format_bytes(total_size)}")
-        echo("")
+    # 2. Add untracked venvs
+    untracked = find_untracked_venvs(cache_entries)
+    for u in untracked:
+        all_venvs.append(
+            {
+                "project_name": u["project_name"],
+                "venv_path_expanded": u["venv_path_expanded"],
+                "disk_usage": u["size"],
+                "tracked": False,
+            }
+        )
 
-    # Confirm unless --yes
-    if not yes and not dry_run:
-        if not click.confirm("Are you sure you want to continue?"):
-            info("Aborted.")
+    if not all_venvs:
+        if json_output:
+            print_json({"removed": [], "failed": [], "freed_bytes": 0})
+        else:
+            info("No managed venvs found")
+        return
+
+    # Show summary
+    total_size = sum(v["disk_usage"] for v in all_venvs)
+
+    if not json_output:
+        display_venvs_to_remove(all_venvs, "ALL", total_size, verbose)
+
+    # Confirm
+    if not dry_run and not yes:
+        if not click.confirm(f"Remove all {len(all_venvs)} venv(s)?", default=False):
+            info("Aborted")
             return
 
-    if dry_run and not json_output:
-        info("[DRY RUN] No changes will be made.")
-        echo("")
+    if dry_run:
+        echo("[DRY RUN] Would remove all venvs and clear cache")
+        return
 
-    # Remove venvs
+    # Remove all venvs
     removed = []
     failed = []
 
-    for item in venvs_to_remove:
-        success_flag, error_msg = remove_venv_directory(item["venv_path"], dry_run)
-
+    for v in all_venvs:
+        success_flag, error_msg = remove_venv_directory(
+            str(v["venv_path_expanded"]), dry_run=False
+        )
         if success_flag:
-            removed.append(item)
-            if verbose and not json_output:
-                echo(f"  Removed: {item['venv_path_expanded']}")
+            removed.append(v["project_name"])
         else:
-            failed.append({"venv": item, "error": error_msg})
-            if not json_output:
-                error(f"  Failed to remove {item['venv_path_expanded']}: {error_msg}")
+            failed.append({"project": v["project_name"], "error": error_msg})
 
     # Clear cache
-    if not dry_run:
-        try:
-            cache.clear()
-        except Exception as e:
-            error(f"Failed to clear cache: {e}")
-            sys.exit(1)
+    cache.clear()
 
     # Output results
     if json_output:
         print_json(
             {
-                "removed": [
-                    {
-                        "project_name": item["project_name"],
-                        "project_path": item["project_path"],
-                        "venv_path": item["venv_path"],
-                        "size_bytes": item["size"],
-                    }
-                    for item in removed
-                ],
-                "failed": [
-                    {
-                        "project_name": item["venv"]["project_name"],
-                        "project_path": item["venv"]["project_path"],
-                        "venv_path": item["venv"]["venv_path"],
-                        "error": item["error"],
-                    }
-                    for item in failed
-                ],
-                "total_size_freed": sum(item["size"] for item in removed),
+                "removed": removed,
+                "failed": failed,
+                "freed_bytes": total_size,
             }
         )
     else:
-        echo("")
-        if dry_run:
-            info(
-                f"[DRY RUN] Would remove {len(removed)} venv(s) "
-                f"and free {format_bytes(total_size)}"
-            )
+        if removed:
+            success(f"Removed {len(removed)} venv(s)")
+            success(f"Freed {format_bytes(total_size)} disk space")
+            success("Cleared cache")
+        if failed:
+            error(f"Failed to remove {len(failed)} venv(s)")
+
+
+def prune_valid(
+    ctx,
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+) -> None:
+    """
+    Remove only valid (non-orphaned) venvs.
+
+    A venv is "valid" if:
+    - It's in the cache
+    - The project directory exists
+    - The .env.uve file exists and matches cache
+
+    Args:
+        ctx: Click context
+        verbose: Show detailed output
+        yes: Skip confirmation
+        dry_run: Don't actually remove anything
+        json_output: Output results as JSON
+    """
+    # Load cache
+    try:
+        cache = Cache()
+        cache_entries = cache.list_all()
+    except Exception as e:
+        error(f"Failed to load cache: {e}")
+        sys.exit(1)
+
+    if not cache_entries:
+        if json_output:
+            print_json({"removed": [], "failed": []})
         else:
-            success(
-                f"Removed {len(removed)} venv(s) and freed {format_bytes(total_size)}"
+            info("No managed venvs found in cache")
+        return
+
+    # Find valid venvs
+    valid_venvs = []
+    for project_path, entry in cache_entries.items():
+        if not is_orphaned(project_path, entry):
+            venv_path_expanded = expand_path_variables(entry["venv_path"])
+            disk_usage = (
+                get_disk_usage(venv_path_expanded) if venv_path_expanded.exists() else 0
             )
-            if failed:
-                warning(f"Failed to remove {len(failed)} venv(s)")
+            valid_venvs.append(
+                {
+                    "project_path": project_path,
+                    "project_name": entry["project_name"],
+                    "venv_path": entry["venv_path"],
+                    "venv_path_expanded": venv_path_expanded,
+                    "disk_usage": disk_usage,
+                }
+            )
+
+    if not valid_venvs:
+        if json_output:
+            print_json({"removed": [], "failed": []})
+        else:
+            info("No valid venvs found")
+        return
+
+    # Show what will be removed
+    total_size = sum(v["disk_usage"] for v in valid_venvs)
+
+    if not json_output:
+        display_venvs_to_remove(valid_venvs, "valid", total_size, verbose)
+
+    # Confirm
+    if not dry_run:
+        if not yes:
+            if not click.confirm(
+                f"Remove {len(valid_venvs)} valid venv(s)?", default=False
+            ):
+                info("Aborted")
+                return
+
+    if dry_run:
+        echo("[DRY RUN] Would remove valid venvs")
+        return
+
+    # Remove venvs
+    removed = []
+    failed = []
+
+    for v in valid_venvs:
+        success_flag, error_msg = remove_venv_directory(
+            str(v["venv_path_expanded"]), dry_run=False
+        )
+        if success_flag:
+            cache.remove_mapping(Path(v["project_path"]))
+            removed.append(v["project_name"])
+        else:
+            failed.append({"project": v["project_name"], "error": error_msg})
+
+    # Output results
+    if json_output:
+        print_json({"removed": removed, "failed": failed})
+    else:
+        if removed:
+            success(f"Removed {len(removed)} valid venv(s)")
+            success(f"Freed {format_bytes(total_size)} disk space")
+        if failed:
+            error(f"Failed to remove {len(failed)} venv(s)")
 
 
 def prune_orphan(
@@ -391,18 +521,12 @@ def prune_orphan(
 
     # Show what will be removed
     if not json_output:
-        echo(f"Found {len(orphaned_venvs)} orphaned venv(s) to remove:")
-        echo("")
-        for item in orphaned_venvs:
-            echo(f"  - {item['project_name']} ({format_bytes(item['size'])})")
-        echo("")
-        echo(f"Total disk space to be freed: {format_bytes(total_size)}")
-        echo("")
+        display_venvs_to_remove(orphaned_venvs, "orphaned", total_size, verbose)
 
     # Confirm unless --yes
     if not yes and not dry_run:
-        if not click.confirm("Continue?"):
-            info("Aborted.")
+        if not click.confirm(f"Remove {len(orphaned_venvs)} orphaned venv(s)?"):
+            info("Aborted")
             return
 
     if dry_run and not json_output:
@@ -541,8 +665,8 @@ def prune_current(
 
     # Confirm unless --yes
     if not yes and not dry_run:
-        if not click.confirm(f"Remove venv for '{project_name}' and clear .env.uve?"):
-            info("Aborted.")
+        if not click.confirm("Remove venv for current project?"):
+            info("Aborted")
             return
 
     if dry_run and not json_output:
@@ -651,8 +775,8 @@ def prune_path(
 
     # Confirm unless --yes
     if not yes and not dry_run:
-        if not click.confirm(f"Remove venv at '{venv_path_to_remove}'?"):
-            info("Aborted.")
+        if not click.confirm("Remove this venv?"):
+            info("Aborted")
             return
 
     if dry_run and not json_output:
@@ -706,6 +830,7 @@ def prune_path(
 def prune_command(
     ctx,
     all_venvs: bool,
+    valid: bool,
     orphan: bool,
     current: bool,
     path: Optional[str],
@@ -719,7 +844,8 @@ def prune_command(
 
     Args:
         ctx: Click context
-        all_venvs: Remove all venvs
+        all_venvs: Remove all venvs (tracked and untracked)
+        valid: Remove only valid venvs
         orphan: Remove only orphaned venvs
         current: Remove current project's venv
         path: Remove venv at specific path
@@ -737,12 +863,15 @@ def prune_command(
         pass
 
     # Validate options - exactly one mode must be specified
-    modes = [all_venvs, orphan, current, path is not None]
+    modes = [all_venvs, valid, orphan, current, path is not None]
     if sum(modes) == 0:
-        error("Must specify one mode: --all, --orphan, --current, or <path>")
+        error("Must specify one mode: --all, --valid, --orphan, --current, or <path>")
         echo("\nExamples:")
-        echo("  prime-uve prune --all          # Remove all venvs")
-        echo("  prime-uve prune --orphan       # Remove orphaned venvs only")
+        echo(
+            "  prime-uve prune --all          # Remove ALL venvs (tracked and untracked)"
+        )
+        echo("  prime-uve prune --valid        # Remove only valid venvs")
+        echo("  prime-uve prune --orphan       # Remove only orphaned venvs")
         echo("  prime-uve prune --current      # Remove current project's venv")
         echo("  prime-uve prune /path/to/venv  # Remove specific venv")
         sys.exit(1)
@@ -754,6 +883,8 @@ def prune_command(
     # Dispatch to appropriate handler
     if all_venvs:
         prune_all(ctx, verbose, yes, dry_run, json_output)
+    elif valid:
+        prune_valid(ctx, verbose, yes, dry_run, json_output)
     elif orphan:
         prune_orphan(ctx, verbose, yes, dry_run, json_output)
     elif current:

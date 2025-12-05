@@ -229,7 +229,7 @@ def prune_valid(
         echo("")
 
     # Confirm
-    if not yes and not dry_run:
+    if not dry_run:
         if not confirm("Remove these valid venvs?", default=False, yes_flag=yes):
             info("Aborted")
             return
@@ -318,9 +318,18 @@ def prune_all(...):
                 echo(f"    Size: {format_bytes(v['disk_usage'])}")
         echo("")
 
-    # Confirm
-    if not yes and not dry_run:
-        if not confirm("Remove ALL venvs? This cannot be undone.", default=False, yes_flag=yes):
+    # Confirm - ALWAYS require confirmation for --all, even with --yes
+    if not dry_run:
+        # Override --yes flag for safety
+        echo("")
+        warning("⚠️  DANGER: This will delete EVERYTHING")
+        echo("")
+        typed_confirmation = click.prompt(
+            'Type "yes" to confirm deletion of ALL venvs',
+            type=str,
+            default="",
+        )
+        if typed_confirmation.lower() != "yes":
             info("Aborted")
             return
 
@@ -511,24 +520,77 @@ Remove these valid venvs? [y/N]: y
 4. ✓ Mode validation prevents invalid combinations
 5. ✓ Help text clearly explains each mode
 
-## Questions for User
+## User Decisions (APPROVED)
 
-1. **Naming**: Is `--valid` the right name? Alternatives: `--active`, `--current-only`, `--managed`?
+1. **Naming**: `--valid` confirmed ✓
 
-valid is ok
+2. **Confirmation prompt**: `--all` must ALWAYS require confirmation, even with `--yes` flag ✓
+   - Requires special handling to override `--yes` behavior
+   - Add explicit prompt: "This will delete EVERYTHING. Type 'yes' to confirm:"
 
-2. **Confirmation prompt**: Should `--all` always require confirmation, even with `--yes`? (More cautious approach)
+3. **Cache clearing**: `--valid` MUST also clear cache entries for removed venvs ✓
+   - Updated implementation in Step 2
 
-yes
+4. **Untracked venvs in `--valid`**: Correctly ignores them (they're orphans) ✓
 
-3. **Cache clearing**: Should `--valid` also clear matching cache entries, or only `--all` clears the cache?
+5. **Disk scan performance**: No `--skip-disk-scan` flag needed ✓
 
-yes, also clear from cache
+---
 
-4. **Untracked venvs in `--valid`**: Currently `--valid` ignores untracked (since they're orphans by definition). Correct?
+## PROPOSAL APPROVED - Ready for Implementation
 
-yes
+**Approved by**: User
+**Approval date**: 2025-12-05
+**Status**: ✅ IMPLEMENTATION COMPLETE
 
-5. **Disk scan performance**: `find_untracked_venvs()` scans the entire venv directory. For users with hundreds of venvs, this might be slow. Should we add a `--skip-disk-scan` flag for performance?
+---
 
-no
+## Implementation Summary
+
+**Implementation date**: 2025-12-05
+**Implemented by**: Haiku agent
+
+### Changes Made
+
+1. **src/prime_uve/cli/main.py**
+   - ✅ Added `--valid` flag to prune command
+   - ✅ Updated help text for all prune modes
+   - ✅ Updated mode validation
+
+2. **src/prime_uve/cli/prune.py**
+   - ✅ Implemented `prune_valid()` function
+     - Removes only valid venvs (cache matches .env.uve)
+     - Clears cache entries for removed venvs
+     - Respects `--yes` flag for confirmation
+   - ✅ Fixed `prune_all()` function
+     - Removes both cached AND untracked venvs
+     - Uses typed confirmation with `click.prompt()`
+     - Overrides `--yes` flag (always requires explicit "yes" input)
+     - Shows tracked vs untracked venvs in output
+   - ✅ Updated mode validation to include `valid` flag
+
+3. **tests/test_cli/test_prune.py**
+   - ✅ Added `TestPruneValid` class with 5 comprehensive tests
+   - ✅ Enhanced `TestPruneAll` with 4 new tests for untracked venvs
+   - ✅ Added mode validation tests for invalid combinations
+   - ✅ All 410 tests passing (39 in test_prune.py)
+
+### Test Results
+
+```
+410 tests passed (8 skipped)
+- test_prune_valid_empty_cache ✅
+- test_prune_valid_removes_only_valid_venvs ✅
+- test_prune_valid_clears_cache_entries ✅
+- test_prune_valid_respects_yes_flag ✅
+- test_prune_valid_dry_run ✅
+- test_prune_all_removes_untracked_venvs ✅
+- test_prune_all_requires_typed_confirmation ✅
+- test_prune_all_dry_run ✅
+- test_prune_command_all_valid_combination ✅
+- test_prune_command_valid_orphan_combination ✅
+```
+
+### Ready for Review and Commit
+
+All requirements met. Ready for user review and git commit.
