@@ -181,15 +181,39 @@ def configure():
 
 
 @configure.command()
+@click.option("--workspace", type=click.Path(), help="Specific workspace file to update")
+@click.option("--create", is_flag=True, help="Create new workspace file")
 @common_options
 @handle_errors
 @click.pass_context
-def vscode(ctx, verbose: bool, yes: bool, dry_run: bool, json_output: bool):
-    """Update VS Code workspace with venv path."""
-    if verbose:
-        info("configure vscode command - not yet implemented")
-    error("Command not implemented yet")
-    sys.exit(1)
+def vscode(
+    ctx,
+    workspace: Optional[str],
+    create: bool,
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+):
+    """Update VS Code workspace with venv path.
+
+    This sets the Python interpreter in your workspace settings so VS Code
+    can provide IntelliSense, debugging, and other IDE features with your
+    external venv.
+
+    If no workspace file exists, one will be created.
+
+    Examples:
+
+        prime-uve configure vscode                    # Update or create workspace
+
+        prime-uve configure vscode --workspace myproject.code-workspace
+
+        prime-uve configure vscode --dry-run          # Preview changes
+    """
+    from prime_uve.cli.configure import configure_vscode_command
+
+    configure_vscode_command(ctx, workspace, create, verbose, yes, dry_run, json_output)
 
 
 def main():
