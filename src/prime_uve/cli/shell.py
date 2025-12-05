@@ -163,7 +163,17 @@ def shell_command(
             elif shell_cmd == "fish":
                 subprocess.run([shell_cmd], env=new_env)
             elif shell_cmd == "pwsh":
-                subprocess.run(["pwsh", "-NoLogo"], env=new_env)
+                # For PowerShell, source the Activate.ps1 script to get proper prompt
+                activate_script = venv_path_expanded / "Scripts" / "Activate.ps1"
+                if activate_script.exists():
+                    # Run PowerShell and dot-source the activation script
+                    subprocess.run(
+                        ["pwsh", "-NoLogo", "-NoExit", "-Command", f". '{activate_script}'"],
+                        env=new_env
+                    )
+                else:
+                    # Fallback if activation script doesn't exist
+                    subprocess.run(["pwsh", "-NoLogo"], env=new_env)
             elif shell_cmd == "cmd":
                 subprocess.run(["cmd"], env=new_env)
             else:
