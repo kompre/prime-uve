@@ -16,28 +16,6 @@ We should then add a new command to `prime-uve register`, that will update the c
 
 `register` should be called before `list` or `prune` to ensure that the cache is up to date.
 
-### correct message output for `prime-uve init`
-
-When `prime-uve init` is called, the current message output is this
-
-```sh
-[OK] Project: prime-uve
-[OK] Project root: C:\Users\s.follador\Documents\github\prime-uve
-[OK] Venv path: ${HOME}/prime-uve/venvs/prime-uve_043331fa
-[OK] Created .env.uve ### or updated if .env.uve already existed
-[OK] Added to cache
-
-Next steps:
-  1. Use 'uve' instead of 'uv' for all commands
-  2. Run 'uve sync' to create venv and install dependencies
-  3. Commit .env.uve to version control ### delete this step, let user decide what to do 
-
-Example:
-  uve sync                # Creates venv and installs dependencies
-  uve add requests        # Add a package
-  uve run python app.py   # Run your application
-```
-
 
 
 ## Instructions
