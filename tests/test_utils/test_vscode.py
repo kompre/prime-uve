@@ -236,8 +236,6 @@ def test_update_workspace_settings_new():
 
     assert "settings" in result
     assert result["settings"]["python.defaultInterpreterPath"] == str(interpreter_path)
-    assert result["settings"]["python.terminal.activateEnvironment"] is True
-    assert result["settings"]["python.envFile"] == "${workspaceFolder}/.env.uve"
 
 
 def test_update_workspace_settings_existing():
@@ -254,8 +252,6 @@ def test_update_workspace_settings_existing():
     result = update_workspace_settings(workspace, interpreter_path)
 
     assert result["settings"]["python.defaultInterpreterPath"] == str(interpreter_path)
-    assert result["settings"]["python.terminal.activateEnvironment"] is True
-    assert result["settings"]["python.envFile"] == "${workspaceFolder}/.env.uve"
     # Verify other settings preserved
     assert result["settings"]["python.linting.enabled"] is True
 
@@ -274,8 +270,6 @@ def test_update_workspace_settings_preserves_other_settings():
     result = update_workspace_settings(workspace, interpreter_path)
 
     assert result["settings"]["python.defaultInterpreterPath"] == str(interpreter_path)
-    assert result["settings"]["python.terminal.activateEnvironment"] is True
-    assert result["settings"]["python.envFile"] == "${workspaceFolder}/.env.uve"
     assert result["settings"]["editor.fontSize"] == 14
     assert result["settings"]["terminal.integrated.shell.linux"] == "/bin/bash"
 
@@ -292,8 +286,6 @@ def test_create_default_workspace():
     assert result["folders"][0]["path"] == "."
     assert "settings" in result
     assert result["settings"]["python.defaultInterpreterPath"] == str(interpreter_path)
-    assert result["settings"]["python.terminal.activateEnvironment"] is True
-    assert result["settings"]["python.envFile"] == "${workspaceFolder}/.env.uve"
 
 
 def test_create_default_workspace_complete():
@@ -308,8 +300,6 @@ def test_create_default_workspace_complete():
     # Settings should have all three Python settings
     assert set(result["settings"].keys()) == {
         "python.defaultInterpreterPath",
-        "python.terminal.activateEnvironment",
-        "python.envFile",
     }
 
 

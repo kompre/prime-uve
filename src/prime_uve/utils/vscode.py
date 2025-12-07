@@ -140,13 +140,11 @@ def update_workspace_settings(workspace: dict, interpreter_path: str | Path) -> 
     """Update Python settings in workspace data for complete venv integration.
 
     Applies three settings:
-    1. python.defaultInterpreterPath - Points to venv Python interpreter
-    2. python.terminal.activateEnvironment - Enables auto-activation in new terminals
-    3. python.envFile - Loads environment variables from .env.uve
+    - python.defaultInterpreterPath - Points to venv Python interpreter
 
     Args:
         workspace: Workspace data dict
-        interpreter_path: Path to Python interpreter (can include env variables like ${HOME})
+        interpreter_path: Path to Python interpreter (can include env variables like ${env:HOME})
 
     Returns:
         Updated workspace data dict
@@ -155,8 +153,6 @@ def update_workspace_settings(workspace: dict, interpreter_path: str | Path) -> 
         workspace["settings"] = {}
 
     workspace["settings"]["python.defaultInterpreterPath"] = str(interpreter_path)
-    workspace["settings"]["python.terminal.activateEnvironment"] = True
-    workspace["settings"]["python.envFile"] = "${workspaceFolder}/.env.uve"
 
     return workspace
 
@@ -164,10 +160,8 @@ def update_workspace_settings(workspace: dict, interpreter_path: str | Path) -> 
 def create_default_workspace(project_root: Path, interpreter_path: str | Path) -> dict:
     """Create workspace structure with complete Python settings.
 
-    Includes all three settings for full venv integration:
+    Set the default interpreter path based on OS for full venv integration:
     - python.defaultInterpreterPath
-    - python.terminal.activateEnvironment
-    - python.envFile
 
     Args:
         project_root: Path to project root
@@ -180,7 +174,20 @@ def create_default_workspace(project_root: Path, interpreter_path: str | Path) -
         "folders": [{"path": "."}],
         "settings": {
             "python.defaultInterpreterPath": str(interpreter_path),
-            "python.terminal.activateEnvironment": True,
-            "python.envFile": "${workspaceFolder}/.env.uve",
         },
     }
+
+def escape_env_variables(path: str) -> str:
+    """Escape VS Code environment variable syntax in a given path.
+    vscode can access env variable using ${env:VAR_NAME}. 
+
+    Args:
+        path: The path to escape.
+
+    Returns:
+        The escaped path.
+    """
+    import re
+        
+    return re.sub(r"\$\{([^}]+)\}", r"${env:\1}", path)
+    

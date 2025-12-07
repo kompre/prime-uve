@@ -151,7 +151,7 @@ def test_configure_vscode_shows_success_message(runner, mock_project, monkeypatc
     result = runner.invoke(cli, ["configure", "vscode", "--yes"])
 
     assert result.exit_code == 0
-    assert "Python interpreter set to venv" in result.output or "OK" in result.output
+    assert "VS Code workspace configured" in result.output or "OK" in result.output
 
 
 # Multiple Workspace Files Tests
@@ -522,7 +522,7 @@ def test_configure_vscode_uses_environment_variables(
     interpreter_path = data["settings"]["python.defaultInterpreterPath"]
 
     # Should contain ${HOME} variable, not the expanded path
-    assert "${HOME}" in interpreter_path or "$HOME" in interpreter_path
+    assert "${env:HOME}" in interpreter_path or "$HOME" in interpreter_path
     assert "custom/venvs/test_venv" in interpreter_path
 
     # Should NOT contain the expanded tmp_path
