@@ -28,6 +28,7 @@ def _get_interpreter_path(venv_path: Path) -> Path:
     Returns:
         Path to Python interpreter executable
     """
+    
     if sys.platform == "win32":
         return venv_path / "Scripts" / "python.exe"
     else:
@@ -51,7 +52,7 @@ def _get_interpreter_path_variable_form(venv_path_var: str) -> str:
 
     if sys.platform == "win32":
         # Use forward slashes for consistency in VS Code
-        return escape_env_variables(f"{venv_path_var}/Scripts/python.exe")
+        return escape_env_variables(f"{venv_path_var}/Scripts/python.exe").replace("HOME", "HOMEPATH")
     else:
         return escape_env_variables(f"{venv_path_var}/bin/python")
 
