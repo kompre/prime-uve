@@ -177,9 +177,10 @@ def create_default_workspace(project_root: Path, interpreter_path: str | Path) -
         },
     }
 
+
 def escape_env_variables(path: str) -> str:
     """Escape VS Code environment variable syntax in a given path.
-    vscode can access env variable using ${env:VAR_NAME}. 
+    vscode can access env variable using ${env:VAR_NAME}.
 
     Args:
         path: The path to escape.
@@ -188,6 +189,5 @@ def escape_env_variables(path: str) -> str:
         The escaped path.
     """
     import re
-        
+
     return re.sub(r"\$\{([^}]+)\}", r"${env:\1}", path)
-    
