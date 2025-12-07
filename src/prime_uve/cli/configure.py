@@ -15,6 +15,7 @@ from prime_uve.utils.vscode import (
     read_workspace,
     update_workspace_settings,
     write_workspace,
+    escape_env_variables,
 )
 
 
@@ -50,9 +51,9 @@ def _get_interpreter_path_variable_form(venv_path_var: str) -> str:
 
     if sys.platform == "win32":
         # Use forward slashes for consistency in VS Code
-        return f"{venv_path_var}/Scripts/python.exe"
+        return escape_env_variables(f"{venv_path_var}/Scripts/python.exe")
     else:
-        return f"{venv_path_var}/bin/python"
+        return escape_env_variables(f"{venv_path_var}/bin/python")
 
 
 def _prompt_workspace_choice(
@@ -207,8 +208,6 @@ def configure_vscode_command(
                 echo(f"\nWorkspace: {workspace_file.name}")
                 echo("\nSettings applied:")
                 echo(f"  ✓ Python interpreter: {interpreter_path}")
-                echo("  ✓ Terminal auto-activation: enabled")
-                echo("  ✓ Environment file: .env.uve")
                 echo("\nNext steps:")
                 echo("  1. Open workspace in VS Code:")
                 echo(f"     code {workspace_file.name}")
@@ -303,8 +302,6 @@ def configure_vscode_command(
         echo(f"\nWorkspace: {workspace_file.name}")
         echo("\nSettings applied:")
         echo(f"  ✓ Python interpreter: {interpreter_path}")
-        echo("  ✓ Terminal auto-activation: enabled")
-        echo("  ✓ Environment file: .env.uve")
         echo("\nNext steps:")
         echo("  1. Open workspace in VS Code:")
         echo(f"     code {workspace_file.name}")
