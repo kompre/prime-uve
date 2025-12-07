@@ -53,7 +53,7 @@ def _get_interpreter_path_variable_form(venv_path_var: str) -> str:
     if sys.platform == "win32":
         # Use forward slashes for consistency in VS Code
         return escape_env_variables(f"{venv_path_var}/Scripts/python.exe").replace(
-            "HOME", "HOMEPATH"
+            "HOME", "USERPROFILE"
         )
     else:
         return escape_env_variables(f"{venv_path_var}/bin/python")
