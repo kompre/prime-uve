@@ -217,6 +217,7 @@ def get_current_project_root() -> Path | None:
     """
     try:
         from prime_uve.core.project import find_project_root
+
         return find_project_root()
     except Exception:
         return None
@@ -314,7 +315,10 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
 
             if not is_valid and venv_path:
                 click.secho(f"  Cache:     {venv_path}", bold=is_current)
-                click.secho(f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}", bold=is_current)
+                click.secho(
+                    f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}",
+                    bold=is_current,
+                )
             echo("")
     else:
         # Compact format - new column order: STATUS | PROJECT | PROJECT PATH | VENV PATH
