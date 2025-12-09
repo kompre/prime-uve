@@ -234,6 +234,9 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
     """
     echo("Managed Virtual Environments\n")
 
+    # Show legend
+    echo("Legend: [OK]: valid | [!]: orphan | >: current project\n")
+
     # Get current project root for highlighting
     current_project_root = get_current_project_root()
 
@@ -290,16 +293,14 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
 
             # Use ASCII-safe symbols for Windows compatibility
             status_symbol = "[OK]" if is_valid else "[!]"
+            current_marker = ">" if is_current else " "
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
-            status_display = f"{status_symbol} {status_text}"
-
-            # Add (current) suffix if this is the current project
-            display_name = f"{project_name} (current)" if is_current else project_name
+            status_display = f"{status_symbol}{current_marker} {status_text}"
 
             color = "green" if is_valid else "red"
             # Show project name, status, size on first line
-            formatted_line = f"{display_name:<20} "
+            formatted_line = f"{project_name:<20} "
             click.secho(formatted_line, nl=False, bold=is_current)
             click.secho(f"{status_display:<15}", fg=color, nl=False, bold=is_current)
             click.secho(f" {size}", bold=is_current)  # Size on same line
@@ -321,8 +322,8 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 )
             echo("")
     else:
-        # Compact format - new column order: STATUS | PROJECT | PROJECT PATH | VENV PATH
-        header = f"{'STATUS':<7} {'PROJECT':<25} {'PROJECT PATH':<50} {'VENV PATH'}"
+        # Compact format - new column order: STATUS | PROJECT PATH | VENV PATH
+        header = f"{'STATUS':<7} {'PROJECT PATH':<60} {'VENV PATH'}"
         echo(header)
         echo("-" * 140)  # Wider separator for new format
 
@@ -356,20 +357,17 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
 
             # Use ASCII-safe symbols for Windows compatibility - compact status
             status_symbol = "[OK]" if is_valid else "[!]"
-
-            # Add (current) suffix if this is the current project
-            display_name = f"{project_name} (current)" if is_current else project_name
+            current_marker = ">" if is_current else " "
 
             # Truncate project path if too long, keeping right side visible
             project_path_str = str(project_path) if project_path else "N/A"
-            project_path_display = truncate_path(project_path_str, 50)
+            project_path_display = truncate_path(project_path_str, 60)
 
             color = "green" if is_valid else "red"
 
-            # Format: STATUS | PROJECT | PROJECT PATH | VENV PATH
-            click.secho(f"{status_symbol:<7}", fg=color, nl=False, bold=is_current)
-            click.secho(f"{display_name:<25} ", nl=False, bold=is_current)
-            click.secho(f"{project_path_display:<50} ", nl=False, bold=is_current)
+            # Format: STATUS | PROJECT PATH | VENV PATH
+            click.secho(f"{status_symbol}{current_marker:<6}", fg=color, nl=False, bold=is_current)
+            click.secho(f"{project_path_display:<60} ", nl=False, bold=is_current)
             click.secho(f"{venv_path_expanded}", bold=is_current)
 
     # Summary
