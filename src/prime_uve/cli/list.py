@@ -478,14 +478,18 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             # Apply bold manually if needed
             if is_current:
                 project_path_final = (
-                    f"\x1b[1m{project_path_display}{' ' * padding_needed}\x1b[0m "
+                    f"\x1b[1m{project_path_display}{' ' * padding_needed}\x1b[0m"
                 )
                 venv_path_final = f"\x1b[1m{venv_path_display}\x1b[0m"
             else:
-                project_path_final = f"{project_path_display}{' ' * padding_needed} "
+                project_path_final = f"{project_path_display}{' ' * padding_needed}"
                 venv_path_final = venv_path_display
 
+            # Add space between STATUS and PROJECT PATH columns to match header
+            click.echo(" ", nl=False)
             click.echo(project_path_final, nl=False)
+            # Add space between PROJECT PATH and VENV PATH columns to match header
+            click.echo(" ", nl=False)
             click.echo(venv_path_final)
 
     # Summary
