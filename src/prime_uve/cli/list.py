@@ -294,7 +294,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             )
 
             # Use symbols from output module
-            status_symbol = _SYMBOLS['success'] if is_valid else _SYMBOLS['error']
+            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
             current_marker = ">" if is_current else " "
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
@@ -358,7 +358,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             )
 
             # Use symbols from output module - compact status
-            status_symbol = _SYMBOLS['success'] if is_valid else _SYMBOLS['error']
+            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
             current_marker = ">" if is_current else " "
 
             # Truncate project path if too long, keeping right side visible
