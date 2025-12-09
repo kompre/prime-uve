@@ -527,8 +527,8 @@ class TestListCommandCLI:
 
         # Assert
         assert result.exit_code == 0
-        assert "<unknown: test-project>" in result.output
-        assert "[!] Orphan" in result.output
+        # Project name no longer shown in compact table (PROJECT column removed)
+        assert "[!]" in result.output  # Orphan status
         assert "Summary: 1 total, 0 valid, 1 orphaned" in result.output
 
     def test_list_untracked_venv_project_name_extraction(
@@ -552,9 +552,10 @@ class TestListCommandCLI:
         # Execute
         result = runner.invoke(cli, ["list"])
 
-        # Assert - should extract "my-project" from "my-project_xyz789"
+        # Assert - project name extraction still works internally (not shown in compact table)
         assert result.exit_code == 0
-        assert "<unknown: my-project>" in result.output
+        # Project name no longer shown in compact table (PROJECT column removed)
+        assert "my-project_xyz789" in result.output  # Check venv path is shown
 
     def test_list_untracked_venvs_with_json(self, runner, tmp_path, monkeypatch):
         """Test untracked venvs in JSON output."""

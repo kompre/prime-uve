@@ -3,7 +3,7 @@
 import pytest
 from click.testing import CliRunner
 
-from prime_uve.cli.main import cli, get_version
+from prime_uve.cli.main import cli
 
 
 class TestCLIMain:
@@ -26,13 +26,6 @@ class TestCLIMain:
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert "prime-uve" in result.output
-
-    def test_get_version(self):
-        """Test version extraction from pyproject.toml."""
-        version = get_version()
-        assert version is not None
-        # Should either be a version string or "unknown"
-        assert isinstance(version, str)
 
     def test_init_command_exists(self, runner):
         """Test that init command exists."""

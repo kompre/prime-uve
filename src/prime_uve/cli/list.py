@@ -7,7 +7,7 @@ from typing import Optional
 
 import click
 
-from prime_uve.cli.output import echo, error, info, print_json
+from prime_uve.cli.output import echo, error, info, print_json, _SYMBOLS
 from prime_uve.cli.register import auto_register_current_project
 from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import read_env_file
@@ -191,22 +191,98 @@ def format_bytes(size: int) -> str:
         return f"{size_float:.1f} {units[unit_index]}"
 
 
-def truncate_path(path: str, max_length: int) -> str:
+def supports_hyperlinks() -> bool:
+    """Check if the terminal supports OSC 8 hyperlinks."""
+    import os
+
+    # Check if we're in a TTY and if terminal supports hyperlinks
+    # Windows Terminal, iTerm2, and modern terminals support OSC 8
+    if not sys.stdout.isatty():
+        return False
+
+    term = os.environ.get("TERM", "")
+    term_program = os.environ.get("TERM_PROGRAM", "")
+    wt_session = os.environ.get("WT_SESSION", "")
+
+    # Known terminals that support OSC 8
+    return bool(
+        wt_session  # Windows Terminal
+        or term_program in ("iTerm.app", "WezTerm", "vscode")
+        or "kitty" in term
+        or "alacritty" in term
+    )
+
+
+def make_clickable_path(path: str, display_text: str) -> str:
+    """
+    Create a clickable terminal hyperlink using OSC 8 escape sequences.
+
+    If terminal doesn't support hyperlinks, returns plain display text.
+
+    Format: \\x1b]8;;file://path\\x1b\\\\display_text\\x1b]8;;\\x1b\\\\
+
+    Args:
+        path: Actual file path (for the link)
+        display_text: Text to display (can be truncated)
+
+    Returns:
+        Formatted string with OSC 8 hyperlink, or plain text if unsupported
+    """
+    # If terminal doesn't support hyperlinks, return plain text
+    if not supports_hyperlinks():
+        return display_text
+
+    # Convert Windows path to file:// URL format
+    # For UNC paths like \\server\share, use file://server/share
+    # For drive paths like C:\path, use file:///C:/path
+    if path.startswith("\\\\"):
+        # UNC path: \\server\share\path -> file://server/share/path
+        file_url = "file:" + path.replace("\\", "/")
+    else:
+        # Drive path: C:\path -> file:///C:/path
+        file_url = "file:///" + path.replace("\\", "/")
+
+    # OSC 8 format: \x1b]8;;URL\x1b\\TEXT\x1b]8;;\x1b\\
+    # Using \x1b (ESC) instead of \033 for proper interpretation
+    return f"\x1b]8;;{file_url}\x1b\\{display_text}\x1b]8;;\x1b\\"
+
+
+def truncate_path(path: str, max_length: int, make_clickable: bool = False) -> str:
     """
     Truncate path to fit max_length, keeping most relevant parts.
 
     Args:
         path: Path string
         max_length: Maximum length
+        make_clickable: If True, wrap in OSC 8 hyperlink to full path
 
     Returns:
-        Truncated path
+        Truncated path (optionally wrapped in hyperlink)
     """
     if len(path) <= max_length:
         return path
 
     # Try to keep the end (most specific part)
-    return "..." + path[-(max_length - 3) :]
+    truncated = "..." + path[-(max_length - 3) :]
+
+    if make_clickable:
+        return make_clickable_path(path, truncated)
+
+    return truncated
+
+
+def get_current_project_root() -> Path | None:
+    """Get current project root if in a managed project.
+
+    Returns:
+        Path to current project root, or None if not in a project
+    """
+    try:
+        from prime_uve.core.project import find_project_root
+
+        return find_project_root()
+    except Exception:
+        return None
 
 
 def output_table(results: list, stats: dict, verbose: bool) -> None:
@@ -219,6 +295,14 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
         verbose: Whether to show verbose output
     """
     echo("Managed Virtual Environments\n")
+
+    # Show legend
+    click.secho(
+        f"Legend: {_SYMBOLS['success']}: valid | {_SYMBOLS['error']}: orphan | >: current project\n"
+    )
+
+    # Get current project root for highlighting
+    current_project_root = get_current_project_root()
 
     if verbose:
         # Wide format with disk usage
@@ -264,37 +348,52 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 else result.get("project_path")
             )
 
-            # Use ASCII-safe symbols for Windows compatibility
-            status_symbol = "[OK]" if is_valid else "[!]"
+            # Check if this is the current project
+            is_current = (
+                current_project_root is not None
+                and project_path is not None
+                and Path(project_path).resolve() == current_project_root.resolve()
+            )
+
+            # Use symbols from output module
+            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
+            current_marker = ">" if is_current else " "
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
-            status_display = f"{status_symbol} {status_text}"
+            status_display = f"{status_symbol}{current_marker} {status_text}"
 
             color = "green" if is_valid else "red"
             # Show project name, status, size on first line
             formatted_line = f"{project_name:<20} "
-            echo(formatted_line, nl=False)
-            click.secho(f"{status_display:<15}", fg=color, nl=False)
-            echo(f" {size}")  # Size on same line
+            click.secho(formatted_line, nl=False, bold=is_current)
+            click.secho(f"{status_display:<15}", fg=color, nl=False, bold=is_current)
+            click.secho(f" {size}", bold=is_current)  # Size on same line
 
             # Extra details in verbose mode
             if project_path:
-                echo(f"  Project: {project_path}")
-            echo(f"  Venv:    {venv_path_expanded}")
+                click.secho(f"  Project: {project_path}", bold=is_current)
+            click.secho(f"  Venv:    {venv_path_expanded}", bold=is_current)
             if hash_val:
-                echo(f"  Hash:    {hash_val}")
+                click.secho(f"  Hash:    {hash_val}", bold=is_current)
             if created_at:
-                echo(f"  Created: {created_at}")
+                click.secho(f"  Created: {created_at}", bold=is_current)
 
             if not is_valid and venv_path:
-                echo(f"  Cache:     {venv_path}")
-                echo(f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}")
+                click.secho(f"  Cache:     {venv_path}", bold=is_current)
+                click.secho(
+                    f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}",
+                    bold=is_current,
+                )
             echo("")
     else:
-        # Compact format - venv path at end so it can be full-length/clickable
-        header = f"{'PROJECT':<20} {'STATUS':<15} {'VENV PATH'}"
+        # Compact format - new column order: STATUS | PROJECT PATH | VENV PATH
+        # Define column widths as constants
+        STATUS_WIDTH = 7
+        PROJECT_PATH_WIDTH = 60
+
+        header = f"{'STATUS':<{STATUS_WIDTH}} {'PROJECT PATH':<{PROJECT_PATH_WIDTH}} {'VENV PATH'}"
         echo(header)
-        echo("-" * 80)  # Fixed width separator
+        echo("-" * 140)  # Wider separator for new format
 
         for result in results:
             # Handle both ValidationResult and untracked venv dicts
@@ -311,18 +410,85 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 if hasattr(result, "venv_path_expanded")
                 else result["venv_path_expanded"]
             )
+            project_path = (
+                result.project_path
+                if hasattr(result, "project_path")
+                else result.get("project_path")
+            )
 
-            # Use ASCII-safe symbols for Windows compatibility
-            status_symbol = "[OK]" if is_valid else "[!]"
-            status_text = "Valid" if is_valid else "Orphan"
-            status_display = f"{status_symbol} {status_text}"
+            # Check if this is the current project
+            is_current = (
+                current_project_root is not None
+                and project_path is not None
+                and Path(project_path).resolve() == current_project_root.resolve()
+            )
+
+            # Use symbols from output module - compact status
+            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
+            current_marker = ">" if is_current else " "
+            status_display = f"{status_symbol}{current_marker}"
+
+            # Prepare project path display (truncate if needed, make clickable)
+            project_path_str = str(project_path) if project_path else "N/A"
+            # Truncate to width - 2 to leave room for "..." prefix
+            max_truncate_length = PROJECT_PATH_WIDTH - 2
+            needs_truncation = (
+                project_path and len(project_path_str) > PROJECT_PATH_WIDTH
+            )
+
+            if needs_truncation:
+                # Truncate and make clickable
+                truncated_text = truncate_path(
+                    project_path_str, max_truncate_length, make_clickable=False
+                )
+                project_path_display = make_clickable_path(
+                    project_path_str, truncated_text
+                )
+                # For visible length: "..." (3) + remaining chars = max_truncate_length
+                visible_length = len(truncated_text)
+            else:
+                # Short enough, make clickable without truncation
+                if project_path:
+                    project_path_display = make_clickable_path(
+                        project_path_str, project_path_str
+                    )
+                else:
+                    project_path_display = project_path_str
+                visible_length = len(project_path_str)
+
+            # Calculate padding needed to reach PROJECT_PATH_WIDTH
+            padding_needed = PROJECT_PATH_WIDTH - visible_length
+
+            # Make venv path clickable
+            venv_path_str = str(venv_path_expanded)
+            venv_path_display = make_clickable_path(venv_path_str, venv_path_str)
 
             color = "green" if is_valid else "red"
-            # Don't truncate venv path - show full path so user can click it
-            formatted_line = f"{project_name:<20} "
-            echo(formatted_line, nl=False)
-            click.secho(f"{status_display:<15}", fg=color, nl=False)
-            echo(f" {venv_path_expanded}")
+
+            # Format: STATUS | PROJECT PATH | VENV PATH
+            # Build styled components with proper padding
+            status_styled = click.style(
+                f"{status_display:<{STATUS_WIDTH}}",
+                fg=color,
+                bold=is_current,
+            )
+
+            # Project path with padding and clickable link
+            # Note: click.style() doesn't work with hyperlinks, so we use manual ANSI codes
+            project_path_padded = f"{project_path_display}{' ' * padding_needed}"
+            if is_current:
+                project_path_styled = f"\x1b[1m{project_path_padded}\x1b[0m"
+            else:
+                project_path_styled = project_path_padded
+
+            # Venv path with clickable link
+            if is_current:
+                venv_path_styled = f"\x1b[1m{venv_path_display}\x1b[0m"
+            else:
+                venv_path_styled = venv_path_display
+
+            # Output all columns in one call with proper spacing
+            click.echo(f"{status_styled} {project_path_styled} {venv_path_styled}")
 
     # Summary
     echo(
@@ -391,6 +557,7 @@ def output_json_format(results: list, stats: dict) -> None:
 def list_command(
     ctx,
     orphan_only: bool,
+    no_auto_register: bool,
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -402,18 +569,22 @@ def list_command(
     Args:
         ctx: Click context
         orphan_only: Show only orphaned venvs
+        no_auto_register: Skip automatic registration of current project
         verbose: Show verbose output
         yes: Skip confirmations (unused here)
         dry_run: Dry run mode (unused here)
         json_output: Output as JSON
     """
-    # 0. Auto-register current project if present
-    try:
-        cache = Cache()
-        auto_register_current_project(cache)
-    except Exception:
-        # Continue even if auto-registration fails
-        pass
+    # 0. Auto-register current project if present (unless --no-auto-register)
+    if not no_auto_register:
+        try:
+            cache = Cache()
+            was_registered, project_name = auto_register_current_project(cache)
+            if was_registered and not json_output:
+                info(f"Registered current project '{project_name}' in cache")
+        except Exception:
+            # Continue even if auto-registration fails
+            pass
 
     # 1. Load cache
     try:

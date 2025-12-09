@@ -833,6 +833,7 @@ def prune_command(
     valid: bool,
     orphan: bool,
     current: bool,
+    no_auto_register: bool,
     path: Optional[str],
     verbose: bool,
     yes: bool,
@@ -848,19 +849,23 @@ def prune_command(
         valid: Remove only valid venvs
         orphan: Remove only orphaned venvs
         current: Remove current project's venv
+        no_auto_register: Skip automatic registration of current project
         path: Remove venv at specific path
         verbose: Show verbose output
         yes: Skip confirmation
         dry_run: Dry run mode
         json_output: Output as JSON
     """
-    # 0. Auto-register current project before pruning
-    try:
-        cache = Cache()
-        auto_register_current_project(cache)
-    except Exception:
-        # Continue even if auto-registration fails
-        pass
+    # 0. Auto-register current project before pruning (unless --no-auto-register)
+    if not no_auto_register:
+        try:
+            cache = Cache()
+            was_registered, project_name = auto_register_current_project(cache)
+            if was_registered and not json_output:
+                info(f"Registered current project '{project_name}' in cache")
+        except Exception:
+            # Continue even if auto-registration fails
+            pass
 
     # Validate options - exactly one mode must be specified
     modes = [all_venvs, valid, orphan, current, path is not None]

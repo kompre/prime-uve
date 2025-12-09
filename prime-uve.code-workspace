@@ -5,6 +5,6 @@
     }
   ],
   "settings": {
-    "python.defaultInterpreterPath": "${env:HOME}/.prime-uve/venvs/prime-uve_2a01a7f1/bin/python"
+    "python.defaultInterpreterPath": "${env:USERPROFILE}/.prime-uve/venvs/prime-uve_043331fa/Scripts/python.exe"
   }
 }
