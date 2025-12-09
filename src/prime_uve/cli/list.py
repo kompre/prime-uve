@@ -194,6 +194,7 @@ def format_bytes(size: int) -> str:
 def supports_hyperlinks() -> bool:
     """Check if the terminal supports OSC 8 hyperlinks."""
     import os
+
     # Check if we're in a TTY and if terminal supports hyperlinks
     # Windows Terminal, iTerm2, and modern terminals support OSC 8
     if not sys.stdout.isatty():
@@ -428,18 +429,26 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
 
             if needs_truncation:
                 # Truncate and make clickable
-                truncated_text = truncate_path(project_path_str, 60, make_clickable=False)
-                project_path_display = make_clickable_path(project_path_str, truncated_text)
+                truncated_text = truncate_path(
+                    project_path_str, 60, make_clickable=False
+                )
+                project_path_display = make_clickable_path(
+                    project_path_str, truncated_text
+                )
                 # For padding: we know the visible text is exactly 60 chars
                 project_path_padded = project_path_display + " "
             else:
                 # Short enough, make clickable without truncation
                 if project_path:
-                    project_path_display = make_clickable_path(project_path_str, project_path_str)
+                    project_path_display = make_clickable_path(
+                        project_path_str, project_path_str
+                    )
                 else:
                     project_path_display = project_path_str
                 # Pad to 60 chars + 1 space
-                project_path_padded = project_path_display + (" " * (61 - len(project_path_str)))
+                project_path_padded = project_path_display + (
+                    " " * (61 - len(project_path_str))
+                )
 
             # Make venv path clickable
             venv_path_str = str(venv_path_expanded)
