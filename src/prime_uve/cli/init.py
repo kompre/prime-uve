@@ -218,13 +218,13 @@ def init_command(
                     echo(e.stderr, err=True)
             sys.exit(e.returncode)
         except FileNotFoundError:
-            error_msg = "'uve' command not found. Make sure prime-uve is installed correctly."
+            error_msg = (
+                "'uve' command not found. Make sure prime-uve is installed correctly."
+            )
             if json_output:
                 import json
 
-                echo(
-                    json.dumps({"status": "error", "message": error_msg}, indent=2)
-                )
+                echo(json.dumps({"status": "error", "message": error_msg}, indent=2))
             else:
                 echo(f"\n⚠ Error: {error_msg}", err=True)
             sys.exit(1)
