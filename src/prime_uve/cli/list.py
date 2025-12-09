@@ -356,7 +356,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             )
 
             # Use symbols from output module
-            status_symbol = _SYMBOLS['success'] if is_valid else _SYMBOLS['error']
+            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
             current_marker = ">" if is_current else " "
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
@@ -424,7 +424,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             )
 
             # Use symbols from output module - compact status
-            status_symbol = _SYMBOLS['success'] if is_valid else _SYMBOLS['error']
+            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
             current_marker = ">" if is_current else " "
             status_display = f"{status_symbol}{current_marker}"
 
@@ -432,12 +432,18 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             project_path_str = str(project_path) if project_path else "N/A"
             # Truncate to width - 2 to leave room for "..." prefix
             max_truncate_length = PROJECT_PATH_WIDTH - 2
-            needs_truncation = project_path and len(project_path_str) > PROJECT_PATH_WIDTH
+            needs_truncation = (
+                project_path and len(project_path_str) > PROJECT_PATH_WIDTH
+            )
 
             if needs_truncation:
                 # Truncate and make clickable
-                truncated_text = truncate_path(project_path_str, max_truncate_length, make_clickable=False)
-                project_path_display = make_clickable_path(project_path_str, truncated_text)
+                truncated_text = truncate_path(
+                    project_path_str, max_truncate_length, make_clickable=False
+                )
+                project_path_display = make_clickable_path(
+                    project_path_str, truncated_text
+                )
                 # For visible length: "..." (3) + remaining chars = max_truncate_length
                 visible_length = len(truncated_text)
             else:
@@ -471,7 +477,9 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             # Use click.echo for hyperlinks to avoid escape sequence escaping
             # Apply bold manually if needed
             if is_current:
-                project_path_final = f"\x1b[1m{project_path_display}{' ' * padding_needed}\x1b[0m "
+                project_path_final = (
+                    f"\x1b[1m{project_path_display}{' ' * padding_needed}\x1b[0m "
+                )
                 venv_path_final = f"\x1b[1m{venv_path_display}\x1b[0m"
             else:
                 project_path_final = f"{project_path_display}{' ' * padding_needed} "
