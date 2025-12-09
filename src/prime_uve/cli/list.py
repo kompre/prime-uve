@@ -7,7 +7,7 @@ from typing import Optional
 
 import click
 
-from prime_uve.cli.output import echo, error, info, print_json
+from prime_uve.cli.output import echo, error, info, print_json, _SYMBOLS
 from prime_uve.cli.register import auto_register_current_project
 from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import read_env_file
@@ -235,7 +235,9 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
     echo("Managed Virtual Environments\n")
 
     # Show legend
-    echo("Legend: [OK]: valid | [!]: orphan | >: current project\n")
+    click.secho(
+        f"Legend: {_SYMBOLS['success']}: valid | {_SYMBOLS['error']}: orphan | >: current project\n"
+    )
 
     # Get current project root for highlighting
     current_project_root = get_current_project_root()
@@ -291,8 +293,8 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 and Path(project_path).resolve() == current_project_root.resolve()
             )
 
-            # Use ASCII-safe symbols for Windows compatibility
-            status_symbol = "[OK]" if is_valid else "[!]"
+            # Use symbols from output module
+            status_symbol = _SYMBOLS['success'] if is_valid else _SYMBOLS['error']
             current_marker = ">" if is_current else " "
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
@@ -355,8 +357,8 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 and Path(project_path).resolve() == current_project_root.resolve()
             )
 
-            # Use ASCII-safe symbols for Windows compatibility - compact status
-            status_symbol = "[OK]" if is_valid else "[!]"
+            # Use symbols from output module - compact status
+            status_symbol = _SYMBOLS['success'] if is_valid else _SYMBOLS['error']
             current_marker = ">" if is_current else " "
 
             # Truncate project path if too long, keeping right side visible
