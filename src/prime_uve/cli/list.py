@@ -466,31 +466,29 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             color = "green" if is_valid else "red"
 
             # Format: STATUS | PROJECT PATH | VENV PATH
-            # Use format specifiers for consistent width
-            click.secho(
+            # Build styled components with proper padding
+            status_styled = click.style(
                 f"{status_display:<{STATUS_WIDTH}}",
                 fg=color,
-                nl=False,
                 bold=is_current,
             )
 
-            # Use click.echo for hyperlinks to avoid escape sequence escaping
-            # Apply bold manually if needed
+            # Project path with padding and clickable link
+            # Note: click.style() doesn't work with hyperlinks, so we use manual ANSI codes
+            project_path_padded = f"{project_path_display}{' ' * padding_needed}"
             if is_current:
-                project_path_final = (
-                    f"\x1b[1m{project_path_display}{' ' * padding_needed}\x1b[0m"
-                )
-                venv_path_final = f"\x1b[1m{venv_path_display}\x1b[0m"
+                project_path_styled = f"\x1b[1m{project_path_padded}\x1b[0m"
             else:
-                project_path_final = f"{project_path_display}{' ' * padding_needed}"
-                venv_path_final = venv_path_display
+                project_path_styled = project_path_padded
 
-            # Add space between STATUS and PROJECT PATH columns to match header
-            click.echo(" ", nl=False)
-            click.echo(project_path_final, nl=False)
-            # Add space between PROJECT PATH and VENV PATH columns to match header
-            click.echo(" ", nl=False)
-            click.echo(venv_path_final)
+            # Venv path with clickable link
+            if is_current:
+                venv_path_styled = f"\x1b[1m{venv_path_display}\x1b[0m"
+            else:
+                venv_path_styled = venv_path_display
+
+            # Output all columns in one call with proper spacing
+            click.echo(f"{status_styled} {project_path_styled} {venv_path_styled}")
 
     # Summary
     echo(
