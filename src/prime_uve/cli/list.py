@@ -366,7 +366,12 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             color = "green" if is_valid else "red"
 
             # Format: STATUS | PROJECT PATH | VENV PATH
-            click.secho(f"{status_symbol}{current_marker:<6}", fg=color, nl=False, bold=is_current)
+            click.secho(
+                f"{status_symbol}{current_marker:<6}",
+                fg=color,
+                nl=False,
+                bold=is_current,
+            )
             click.secho(f"{project_path_display:<60} ", nl=False, bold=is_current)
             click.secho(f"{venv_path_expanded}", bold=is_current)
 
