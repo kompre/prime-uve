@@ -1,38 +1,18 @@
 """Main CLI entry point for prime-uve."""
 
-from pathlib import Path
 from typing import Optional
 
 import click
 
+from prime_uve import __version__
 from prime_uve.cli.decorators import common_options, handle_errors
 
 
-def get_version() -> str:
-    """Get version from pyproject.toml."""
-    try:
-        import tomllib
-    except ImportError:
-        import tomli as tomllib
-
-    # Find pyproject.toml
-    package_root = Path(__file__).parent.parent.parent.parent
-    pyproject_path = package_root / "pyproject.toml"
-
-    if pyproject_path.exists():
-        with open(pyproject_path, "rb") as f:
-            data = tomllib.load(f)
-            return data.get("project", {}).get("version", "unknown")
-
-    return "unknown"
-
-
 @click.group()
-@click.version_option(version=get_version(), prog_name="prime-uve")
+@click.version_option(version=__version__, prog_name="prime-uve")
 @click.pass_context
 def cli(ctx):
-    """
-    prime-uve: Virtual environment management for uv with external venv locations.
+    """Virtual environment management for uv with external venv locations.
 
     Manage Python virtual environments in a centralized location outside your
     project directories. Automatically loads .env.uve files for seamless
@@ -42,9 +22,14 @@ def cli(ctx):
     ctx.ensure_object(dict)
 
 
+# Dynamically update the help text to include version
+cli.help = f"prime-uve v{__version__}: {cli.help}"
+
+
 @cli.command()
 @click.option("--force", "-f", is_flag=True, help="Reinitialize even if already set up")
 @click.option("--venv-dir", type=click.Path(), help="Override venv base directory")
+@click.option("--sync", is_flag=True, help="Run 'uve sync' after initialization")
 @common_options
 @handle_errors
 @click.pass_context
@@ -52,6 +37,7 @@ def init(
     ctx,
     force: bool,
     venv_dir: Optional[str],
+    sync: bool,
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -60,7 +46,7 @@ def init(
     """Initialize project with external venv."""
     from prime_uve.cli.init import init_command
 
-    init_command(ctx, force, venv_dir, verbose, yes, dry_run, json_output)
+    init_command(ctx, force, venv_dir, sync, verbose, yes, dry_run, json_output)
 
 
 @cli.command()
