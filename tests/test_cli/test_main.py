@@ -3,7 +3,7 @@
 import pytest
 from click.testing import CliRunner
 
-from prime_uve.cli.main import cli, get_version
+from prime_uve.cli.main import cli
 
 
 class TestCLIMain:
