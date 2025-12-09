@@ -356,7 +356,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             )
 
             # Use symbols from output module
-            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
+            status_symbol = _SYMBOLS['success'] if is_valid else _SYMBOLS['error']
             current_marker = ">" if is_current else " "
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
@@ -387,7 +387,11 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             echo("")
     else:
         # Compact format - new column order: STATUS | PROJECT PATH | VENV PATH
-        header = f"{'STATUS':<7} {'PROJECT PATH':<60} {'VENV PATH'}"
+        # Define column widths as constants
+        STATUS_WIDTH = 7
+        PROJECT_PATH_WIDTH = 60
+
+        header = f"{'STATUS':<{STATUS_WIDTH}} {'PROJECT PATH':<{PROJECT_PATH_WIDTH}} {'VENV PATH'}"
         echo(header)
         echo("-" * 140)  # Wider separator for new format
 
@@ -420,23 +424,22 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             )
 
             # Use symbols from output module - compact status
-            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
+            status_symbol = _SYMBOLS['success'] if is_valid else _SYMBOLS['error']
             current_marker = ">" if is_current else " "
+            status_display = f"{status_symbol}{current_marker}"
 
             # Prepare project path display (truncate if needed, make clickable)
             project_path_str = str(project_path) if project_path else "N/A"
-            needs_truncation = project_path and len(project_path_str) > 60
+            # Truncate to width - 2 to leave room for "..." prefix
+            max_truncate_length = PROJECT_PATH_WIDTH - 2
+            needs_truncation = project_path and len(project_path_str) > PROJECT_PATH_WIDTH
 
             if needs_truncation:
                 # Truncate and make clickable
-                truncated_text = truncate_path(
-                    project_path_str, 60, make_clickable=False
-                )
-                project_path_display = make_clickable_path(
-                    project_path_str, truncated_text
-                )
-                # For padding: we know the visible text is exactly 60 chars
-                project_path_padded = project_path_display + " "
+                truncated_text = truncate_path(project_path_str, max_truncate_length, make_clickable=False)
+                project_path_display = make_clickable_path(project_path_str, truncated_text)
+                # For visible length: "..." (3) + remaining chars = max_truncate_length
+                visible_length = len(truncated_text)
             else:
                 # Short enough, make clickable without truncation
                 if project_path:
@@ -445,10 +448,10 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                     )
                 else:
                     project_path_display = project_path_str
-                # Pad to 60 chars + 1 space
-                project_path_padded = project_path_display + (
-                    " " * (61 - len(project_path_str))
-                )
+                visible_length = len(project_path_str)
+
+            # Calculate padding needed to reach PROJECT_PATH_WIDTH
+            padding_needed = PROJECT_PATH_WIDTH - visible_length
 
             # Make venv path clickable
             venv_path_str = str(venv_path_expanded)
@@ -457,19 +460,21 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             color = "green" if is_valid else "red"
 
             # Format: STATUS | PROJECT PATH | VENV PATH
+            # Use format specifiers for consistent width
             click.secho(
-                f"{status_symbol}{current_marker:<6}",
+                f"{status_display:<{STATUS_WIDTH}}",
                 fg=color,
                 nl=False,
                 bold=is_current,
             )
+
             # Use click.echo for hyperlinks to avoid escape sequence escaping
             # Apply bold manually if needed
             if is_current:
-                project_path_final = f"\x1b[1m{project_path_padded}\x1b[0m"
+                project_path_final = f"\x1b[1m{project_path_display}{' ' * padding_needed}\x1b[0m "
                 venv_path_final = f"\x1b[1m{venv_path_display}\x1b[0m"
             else:
-                project_path_final = project_path_padded
+                project_path_final = f"{project_path_display}{' ' * padding_needed} "
                 venv_path_final = venv_path_display
 
             click.echo(project_path_final, nl=False)
