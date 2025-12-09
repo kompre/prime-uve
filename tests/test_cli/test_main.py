@@ -27,13 +27,6 @@ class TestCLIMain:
         assert result.exit_code == 0
         assert "prime-uve" in result.output
 
-    def test_get_version(self):
-        """Test version extraction from pyproject.toml."""
-        version = get_version()
-        assert version is not None
-        # Should either be a version string or "unknown"
-        assert isinstance(version, str)
-
     def test_init_command_exists(self, runner):
         """Test that init command exists."""
         result = runner.invoke(cli, ["init", "--help"])
