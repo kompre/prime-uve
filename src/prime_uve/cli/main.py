@@ -51,12 +51,22 @@ def init(
 
 @cli.command()
 @click.option("--orphan-only", is_flag=True, help="Show only orphaned venvs")
-@click.option("--no-auto-register", is_flag=True, help="Skip automatic registration of current project")
+@click.option(
+    "--no-auto-register",
+    is_flag=True,
+    help="Skip automatic registration of current project",
+)
 @common_options
 @handle_errors
 @click.pass_context
 def list(
-    ctx, orphan_only: bool, no_auto_register: bool, verbose: bool, yes: bool, dry_run: bool, json_output: bool
+    ctx,
+    orphan_only: bool,
+    no_auto_register: bool,
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
 ):
     """List all managed venvs with validation status."""
     from prime_uve.cli.list import list_command
@@ -77,7 +87,11 @@ def list(
     help="Remove only orphaned venvs (cache mismatch or untracked)",
 )
 @click.option("--current", is_flag=True, help="Remove current project's venv")
-@click.option("--no-auto-register", is_flag=True, help="Skip automatic registration of current project")
+@click.option(
+    "--no-auto-register",
+    is_flag=True,
+    help="Skip automatic registration of current project",
+)
 @click.argument("path", required=False, type=click.Path())
 @common_options
 @handle_errors
@@ -107,7 +121,17 @@ def prune(
     from prime_uve.cli.prune import prune_command
 
     prune_command(
-        ctx, all_venvs, valid, orphan, current, no_auto_register, path, verbose, yes, dry_run, json_output
+        ctx,
+        all_venvs,
+        valid,
+        orphan,
+        current,
+        no_auto_register,
+        path,
+        verbose,
+        yes,
+        dry_run,
+        json_output,
     )
 
 
