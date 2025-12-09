@@ -239,14 +239,48 @@ No new dependencies needed.
 
 **Total estimate**: 5-7 hours
 
+## Implementation Complete
+
+All phases have been implemented successfully:
+
+### Phase 1: Table Redesign ✓
+- Changed column order to: `STATUS | PROJECT | PROJECT PATH | VENV PATH`
+- Status column now shows only `[OK]` or `[!]` (compact 7-char width)
+- Added PROJECT PATH column (50 chars, truncated with "..." prefix for long paths)
+- Table separator width adjusted to 140 chars for new layout
+
+### Phase 2: Current Project Highlighting ✓
+- Added `get_current_project_root()` helper function
+- Current project detection via `find_project_root()`
+- `(current)` suffix added to project name when detected
+- Bold text formatting applied to entire current project row
+
+### Phase 3: Auto-Registration Control ✓
+- Added `--no-auto-register` flag to both `list` and `prune` commands
+- Flag properly integrated into Click command definitions in main.py
+- Both commands respect the flag when calling `auto_register_current_project()`
+
+### Phase 4: Registration Notification ✓
+- Modified `auto_register_current_project()` to return `(was_registered, project_name)` tuple
+- Function now checks if project is already registered with same venv path (no duplicate registrations)
+- Registration message displayed via `info()` (blue color) when registration occurs
+- Message format: `"Registered current project '{project_name}' in cache"`
+- Message suppressed in JSON output mode and when `--no-auto-register` is used
+
+### Testing ✓
+- All 26 list tests passing
+- All 39 prune tests passing
+- Fixed test assertion to match new compact status format (`[!]` instead of `[!] Orphan`)
+- Fixed output calls to use `click.secho()` instead of `echo()` for bold text support
+
+### Implementation Decisions Made
+
+1. **Column order**: Chose `STATUS | PROJECT | PROJECT PATH | VENV PATH` for better visibility
+2. **Project path display**: Full absolute path for terminal clickability
+3. **Registration message**: Used `info()` (blue) as informational, not celebratory
+4. **Current project indicator**: Used `(current)` suffix - clear and explicit
+5. **Table separator**: Kept separator line but widened to 140 chars for new layout
+
 ## Questions for User
 
-1. **Column order preference**: Is `STATUS | PROJECT | PROJECT PATH | VENV PATH` the right order? Or prefer `PROJECT | STATUS | PROJECT PATH | VENV PATH`?
-
-2. **Project path display**: Full absolute path, or relative to home (`~/Documents/...`)?
-
-3. **Registration message**: Should it be `info()` (blue), `success()` (green), or just plain `echo()`?
-
-4. **Current project indicator**: Prefer `(current)` suffix or a different marker like `*` or `→`?
-
-5. **Table separator**: Keep the `------` line or remove for cleaner look?
+All initial questions have been answered through implementation. The implementation is complete and tested.

@@ -528,7 +528,7 @@ class TestListCommandCLI:
         # Assert
         assert result.exit_code == 0
         assert "<unknown: test-project>" in result.output
-        assert "[!] Orphan" in result.output
+        assert "[!]" in result.output  # New compact status format
         assert "Summary: 1 total, 0 valid, 1 orphaned" in result.output
 
     def test_list_untracked_venv_project_name_extraction(

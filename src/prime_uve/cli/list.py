@@ -209,6 +209,19 @@ def truncate_path(path: str, max_length: int) -> str:
     return "..." + path[-(max_length - 3) :]
 
 
+def get_current_project_root() -> Path | None:
+    """Get current project root if in a managed project.
+
+    Returns:
+        Path to current project root, or None if not in a project
+    """
+    try:
+        from prime_uve.core.project import find_project_root
+        return find_project_root()
+    except Exception:
+        return None
+
+
 def output_table(results: list, stats: dict, verbose: bool) -> None:
     """
     Output results as a formatted table.
@@ -219,6 +232,9 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
         verbose: Whether to show verbose output
     """
     echo("Managed Virtual Environments\n")
+
+    # Get current project root for highlighting
+    current_project_root = get_current_project_root()
 
     if verbose:
         # Wide format with disk usage
@@ -264,37 +280,47 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 else result.get("project_path")
             )
 
+            # Check if this is the current project
+            is_current = (
+                current_project_root is not None
+                and project_path is not None
+                and Path(project_path).resolve() == current_project_root.resolve()
+            )
+
             # Use ASCII-safe symbols for Windows compatibility
             status_symbol = "[OK]" if is_valid else "[!]"
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
             status_display = f"{status_symbol} {status_text}"
 
+            # Add (current) suffix if this is the current project
+            display_name = f"{project_name} (current)" if is_current else project_name
+
             color = "green" if is_valid else "red"
             # Show project name, status, size on first line
-            formatted_line = f"{project_name:<20} "
-            echo(formatted_line, nl=False)
-            click.secho(f"{status_display:<15}", fg=color, nl=False)
-            echo(f" {size}")  # Size on same line
+            formatted_line = f"{display_name:<20} "
+            click.secho(formatted_line, nl=False, bold=is_current)
+            click.secho(f"{status_display:<15}", fg=color, nl=False, bold=is_current)
+            click.secho(f" {size}", bold=is_current)  # Size on same line
 
             # Extra details in verbose mode
             if project_path:
-                echo(f"  Project: {project_path}")
-            echo(f"  Venv:    {venv_path_expanded}")
+                click.secho(f"  Project: {project_path}", bold=is_current)
+            click.secho(f"  Venv:    {venv_path_expanded}", bold=is_current)
             if hash_val:
-                echo(f"  Hash:    {hash_val}")
+                click.secho(f"  Hash:    {hash_val}", bold=is_current)
             if created_at:
-                echo(f"  Created: {created_at}")
+                click.secho(f"  Created: {created_at}", bold=is_current)
 
             if not is_valid and venv_path:
-                echo(f"  Cache:     {venv_path}")
-                echo(f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}")
+                click.secho(f"  Cache:     {venv_path}", bold=is_current)
+                click.secho(f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}", bold=is_current)
             echo("")
     else:
-        # Compact format - venv path at end so it can be full-length/clickable
-        header = f"{'PROJECT':<20} {'STATUS':<15} {'VENV PATH'}"
+        # Compact format - new column order: STATUS | PROJECT | PROJECT PATH | VENV PATH
+        header = f"{'STATUS':<7} {'PROJECT':<25} {'PROJECT PATH':<50} {'VENV PATH'}"
         echo(header)
-        echo("-" * 80)  # Fixed width separator
+        echo("-" * 140)  # Wider separator for new format
 
         for result in results:
             # Handle both ValidationResult and untracked venv dicts
@@ -311,18 +337,36 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 if hasattr(result, "venv_path_expanded")
                 else result["venv_path_expanded"]
             )
+            project_path = (
+                result.project_path
+                if hasattr(result, "project_path")
+                else result.get("project_path")
+            )
 
-            # Use ASCII-safe symbols for Windows compatibility
+            # Check if this is the current project
+            is_current = (
+                current_project_root is not None
+                and project_path is not None
+                and Path(project_path).resolve() == current_project_root.resolve()
+            )
+
+            # Use ASCII-safe symbols for Windows compatibility - compact status
             status_symbol = "[OK]" if is_valid else "[!]"
-            status_text = "Valid" if is_valid else "Orphan"
-            status_display = f"{status_symbol} {status_text}"
+
+            # Add (current) suffix if this is the current project
+            display_name = f"{project_name} (current)" if is_current else project_name
+
+            # Truncate project path if too long, keeping right side visible
+            project_path_str = str(project_path) if project_path else "N/A"
+            project_path_display = truncate_path(project_path_str, 50)
 
             color = "green" if is_valid else "red"
-            # Don't truncate venv path - show full path so user can click it
-            formatted_line = f"{project_name:<20} "
-            echo(formatted_line, nl=False)
-            click.secho(f"{status_display:<15}", fg=color, nl=False)
-            echo(f" {venv_path_expanded}")
+
+            # Format: STATUS | PROJECT | PROJECT PATH | VENV PATH
+            click.secho(f"{status_symbol:<7}", fg=color, nl=False, bold=is_current)
+            click.secho(f"{display_name:<25} ", nl=False, bold=is_current)
+            click.secho(f"{project_path_display:<50} ", nl=False, bold=is_current)
+            click.secho(f"{venv_path_expanded}", bold=is_current)
 
     # Summary
     echo(
@@ -391,6 +435,7 @@ def output_json_format(results: list, stats: dict) -> None:
 def list_command(
     ctx,
     orphan_only: bool,
+    no_auto_register: bool,
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -402,18 +447,22 @@ def list_command(
     Args:
         ctx: Click context
         orphan_only: Show only orphaned venvs
+        no_auto_register: Skip automatic registration of current project
         verbose: Show verbose output
         yes: Skip confirmations (unused here)
         dry_run: Dry run mode (unused here)
         json_output: Output as JSON
     """
-    # 0. Auto-register current project if present
-    try:
-        cache = Cache()
-        auto_register_current_project(cache)
-    except Exception:
-        # Continue even if auto-registration fails
-        pass
+    # 0. Auto-register current project if present (unless --no-auto-register)
+    if not no_auto_register:
+        try:
+            cache = Cache()
+            was_registered, project_name = auto_register_current_project(cache)
+            if was_registered and not json_output:
+                info(f"Registered current project '{project_name}' in cache")
+        except Exception:
+            # Continue even if auto-registration fails
+            pass
 
     # 1. Load cache
     try:

@@ -9,7 +9,7 @@ from prime_uve.core.paths import expand_path_variables, generate_hash
 from prime_uve.core.project import find_project_root, get_project_metadata
 
 
-def auto_register_current_project(cache: Cache) -> bool:
+def auto_register_current_project(cache: Cache) -> tuple[bool, str | None]:
     """Silently register current project if in a managed project.
 
     Called internally by list/prune commands before executing.
@@ -19,37 +19,42 @@ def auto_register_current_project(cache: Cache) -> bool:
         cache: Cache instance to register with
 
     Returns:
-        True if registered, False if nothing to register
+        (was_registered, project_name) or (False, None)
     """
     try:
         # Find project root (same logic as uve wrapper)
         project_root = find_project_root()
         if not project_root:
-            return False  # Not in a project
+            return (False, None)  # Not in a project
 
         # Check for .env.uve
         env_file = project_root / ".env.uve"
         if not env_file.exists():
-            return False  # No .env.uve
+            return (False, None)  # No .env.uve
 
         # Read UV_PROJECT_ENVIRONMENT
         env_vars = read_env_file(env_file)
         venv_path = env_vars.get("UV_PROJECT_ENVIRONMENT")
         if not venv_path or not venv_path.strip():
-            return False  # Not set or empty
+            return (False, None)  # Not set or empty
 
         # Get metadata from pyproject.toml (same as init)
         metadata = get_project_metadata(project_root)
         project_name = metadata.name or project_root.name
         path_hash = generate_hash(project_root)
 
+        # Check if already registered with same venv path
+        existing_mapping = cache.get_mapping(project_root)
+        if existing_mapping and existing_mapping.get("venv_path") == venv_path:
+            return (False, None)  # Already registered, no action taken
+
         # Register with cache (idempotent operation)
         cache.add_mapping(project_root, venv_path, project_name, path_hash)
-        return True
+        return (True, project_name)
 
     except Exception:
         # Silent failure - don't break list/prune
-        return False
+        return (False, None)
 
 
 def register_command(
