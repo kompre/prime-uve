@@ -191,22 +191,83 @@ def format_bytes(size: int) -> str:
         return f"{size_float:.1f} {units[unit_index]}"
 
 
-def truncate_path(path: str, max_length: int) -> str:
+def supports_hyperlinks() -> bool:
+    """Check if the terminal supports OSC 8 hyperlinks."""
+    import os
+    # Check if we're in a TTY and if terminal supports hyperlinks
+    # Windows Terminal, iTerm2, and modern terminals support OSC 8
+    if not sys.stdout.isatty():
+        return False
+
+    term = os.environ.get("TERM", "")
+    term_program = os.environ.get("TERM_PROGRAM", "")
+    wt_session = os.environ.get("WT_SESSION", "")
+
+    # Known terminals that support OSC 8
+    return bool(
+        wt_session  # Windows Terminal
+        or term_program in ("iTerm.app", "WezTerm", "vscode")
+        or "kitty" in term
+        or "alacritty" in term
+    )
+
+
+def make_clickable_path(path: str, display_text: str) -> str:
+    """
+    Create a clickable terminal hyperlink using OSC 8 escape sequences.
+
+    If terminal doesn't support hyperlinks, returns plain display text.
+
+    Format: \\x1b]8;;file://path\\x1b\\\\display_text\\x1b]8;;\\x1b\\\\
+
+    Args:
+        path: Actual file path (for the link)
+        display_text: Text to display (can be truncated)
+
+    Returns:
+        Formatted string with OSC 8 hyperlink, or plain text if unsupported
+    """
+    # If terminal doesn't support hyperlinks, return plain text
+    if not supports_hyperlinks():
+        return display_text
+
+    # Convert Windows path to file:// URL format
+    # For UNC paths like \\server\share, use file://server/share
+    # For drive paths like C:\path, use file:///C:/path
+    if path.startswith("\\\\"):
+        # UNC path: \\server\share\path -> file://server/share/path
+        file_url = "file:" + path.replace("\\", "/")
+    else:
+        # Drive path: C:\path -> file:///C:/path
+        file_url = "file:///" + path.replace("\\", "/")
+
+    # OSC 8 format: \x1b]8;;URL\x1b\\TEXT\x1b]8;;\x1b\\
+    # Using \x1b (ESC) instead of \033 for proper interpretation
+    return f"\x1b]8;;{file_url}\x1b\\{display_text}\x1b]8;;\x1b\\"
+
+
+def truncate_path(path: str, max_length: int, make_clickable: bool = False) -> str:
     """
     Truncate path to fit max_length, keeping most relevant parts.
 
     Args:
         path: Path string
         max_length: Maximum length
+        make_clickable: If True, wrap in OSC 8 hyperlink to full path
 
     Returns:
-        Truncated path
+        Truncated path (optionally wrapped in hyperlink)
     """
     if len(path) <= max_length:
         return path
 
     # Try to keep the end (most specific part)
-    return "..." + path[-(max_length - 3) :]
+    truncated = "..." + path[-(max_length - 3) :]
+
+    if make_clickable:
+        return make_clickable_path(path, truncated)
+
+    return truncated
 
 
 def get_current_project_root() -> Path | None:
@@ -361,9 +422,28 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
             current_marker = ">" if is_current else " "
 
-            # Truncate project path if too long, keeping right side visible
+            # Prepare project path display (truncate if needed, make clickable)
             project_path_str = str(project_path) if project_path else "N/A"
-            project_path_display = truncate_path(project_path_str, 60)
+            needs_truncation = project_path and len(project_path_str) > 60
+
+            if needs_truncation:
+                # Truncate and make clickable
+                truncated_text = truncate_path(project_path_str, 60, make_clickable=False)
+                project_path_display = make_clickable_path(project_path_str, truncated_text)
+                # For padding: we know the visible text is exactly 60 chars
+                project_path_padded = project_path_display + " "
+            else:
+                # Short enough, make clickable without truncation
+                if project_path:
+                    project_path_display = make_clickable_path(project_path_str, project_path_str)
+                else:
+                    project_path_display = project_path_str
+                # Pad to 60 chars + 1 space
+                project_path_padded = project_path_display + (" " * (61 - len(project_path_str)))
+
+            # Make venv path clickable
+            venv_path_str = str(venv_path_expanded)
+            venv_path_display = make_clickable_path(venv_path_str, venv_path_str)
 
             color = "green" if is_valid else "red"
 
@@ -374,8 +454,17 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 nl=False,
                 bold=is_current,
             )
-            click.secho(f"{project_path_display:<60} ", nl=False, bold=is_current)
-            click.secho(f"{venv_path_expanded}", bold=is_current)
+            # Use click.echo for hyperlinks to avoid escape sequence escaping
+            # Apply bold manually if needed
+            if is_current:
+                project_path_final = f"\x1b[1m{project_path_padded}\x1b[0m"
+                venv_path_final = f"\x1b[1m{venv_path_display}\x1b[0m"
+            else:
+                project_path_final = project_path_padded
+                venv_path_final = venv_path_display
+
+            click.echo(project_path_final, nl=False)
+            click.echo(venv_path_final)
 
     # Summary
     echo(
