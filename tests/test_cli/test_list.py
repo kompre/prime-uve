@@ -13,6 +13,7 @@ from prime_uve.cli.list import (
     validate_project_mapping,
 )
 from prime_uve.cli.main import cli
+from prime_uve.cli.output import _SYMBOLS
 
 
 @pytest.fixture
@@ -287,7 +288,7 @@ class TestListCommandCLI:
         # Assert
         assert result.exit_code == 0
         assert "test_project" in result.output
-        assert "[OK]" in result.output or "Valid" in result.output
+        assert _SYMBOLS["success"] in result.output or "Valid" in result.output
         assert "Summary: 1 total, 1 valid, 0 orphaned" in result.output
 
     def test_list_multiple_projects(self, runner, tmp_path, monkeypatch):
@@ -528,7 +529,7 @@ class TestListCommandCLI:
         # Assert
         assert result.exit_code == 0
         # Project name no longer shown in compact table (PROJECT column removed)
-        assert "[!]" in result.output  # Orphan status
+        assert _SYMBOLS["error"] in result.output  # Orphan status
         assert "Summary: 1 total, 0 valid, 1 orphaned" in result.output
 
     def test_list_untracked_venv_project_name_extraction(
