@@ -13,6 +13,10 @@ from prime_uve.core.paths import (
     generate_venv_path,
     get_project_name,
     ensure_home_set,
+    get_default_venvs_cache_path,
+    get_venvs_cache_path,
+    get_default_data_path,
+    get_data_path,
 )
 
 
@@ -186,28 +190,27 @@ class TestGenerateVenvPath:
     """Tests for generate_venv_path function."""
 
     def test_format(self, tmp_path):
-        """Generated path uses ${HOME} variable."""
+        """Generated path uses ${PRIMEUVE_VENVS_PATH} variable."""
         project_path = tmp_path / "my-project"
         project_path.mkdir()
 
         venv_path = generate_venv_path(project_path)
 
-        assert venv_path.startswith("${HOME}/.prime-uve/venvs/")
+        assert venv_path.startswith("${PRIMEUVE_VENVS_PATH}/")
         assert "my-project_" in venv_path
 
     def test_not_expanded(self, tmp_path):
-        """Generated path contains literal ${HOME}, not expanded."""
+        """Generated path contains literal ${PRIMEUVE_VENVS_PATH}, not expanded."""
         project_path = tmp_path / "test-project"
         project_path.mkdir()
 
         venv_path = generate_venv_path(project_path)
 
-        assert "${HOME}" in venv_path
-        # Should not contain actual home directory
-        if sys.platform == "win32":
-            assert "Users" not in venv_path or "${HOME}" in venv_path
-        else:
-            assert "/home/" not in venv_path or "${HOME}" in venv_path
+        assert "${PRIMEUVE_VENVS_PATH}" in venv_path
+        # Should not contain actual paths
+        assert "/home/" not in venv_path
+        assert "/Users/" not in venv_path
+        assert "C:\\" not in venv_path
 
     def test_includes_hash(self, tmp_path):
         """Generated path includes project name and hash."""
@@ -242,6 +245,28 @@ class TestExpandPathVariables:
         assert "${HOME}" not in str(expanded)
         assert "prime-uve" in str(expanded)
         assert expanded.is_absolute()
+
+    def test_expands_primeuve_venvs_path(self):
+        """${PRIMEUVE_VENVS_PATH} expands to platform-appropriate venv cache path."""
+        path_str = "${PRIMEUVE_VENVS_PATH}/myproject_abc123"
+
+        expanded = expand_path_variables(path_str)
+
+        assert "${PRIMEUVE_VENVS_PATH}" not in str(expanded)
+        assert "myproject_abc123" in str(expanded)
+        assert expanded.is_absolute()
+        # Should contain platform-appropriate cache directory
+        assert "prime-uve" in str(expanded)
+        assert "venvs" in str(expanded)
+
+    @patch.dict(os.environ, {"PRIMEUVE_VENVS_PATH": "/custom/venvs"})
+    def test_expands_primeuve_venvs_path_with_override(self):
+        """${PRIMEUVE_VENVS_PATH} respects environment variable override."""
+        path_str = "${PRIMEUVE_VENVS_PATH}/myproject_abc123"
+
+        expanded = expand_path_variables(path_str)
+
+        assert str(expanded) == "/custom/venvs/myproject_abc123"
 
     @patch.dict(os.environ, {"HOME": "/custom/home"})
     def test_uses_home_env_var_unix(self):
@@ -331,6 +356,78 @@ class TestEnsureHomeSet:
         mock_expanduser.assert_called_once_with("~")
 
 
+class TestPlatformAwarePaths:
+    """Tests for platform-aware path functions."""
+
+    @patch("platform.system", return_value="Linux")
+    def test_venvs_cache_path_linux(self, mock_system):
+        """Linux uses XDG cache directory."""
+        path = get_default_venvs_cache_path()
+        assert ".cache/prime-uve/venvs" in str(path)
+
+    @patch("platform.system", return_value="Darwin")
+    def test_venvs_cache_path_macos(self, mock_system):
+        """macOS uses Library/Caches."""
+        path = get_default_venvs_cache_path()
+        assert "Library/Caches/prime-uve/venvs" in str(path)
+
+    @patch("platform.system", return_value="Windows")
+    @patch.dict(os.environ, {"LOCALAPPDATA": "C:\\Users\\test\\AppData\\Local"})
+    def test_venvs_cache_path_windows(self, mock_system):
+        """Windows uses LOCALAPPDATA."""
+        path = get_default_venvs_cache_path()
+        assert "prime-uve" in str(path)
+        assert "Cache" in str(path)
+        assert "venvs" in str(path)
+
+    @patch("platform.system", return_value="Linux")
+    def test_data_path_linux(self, mock_system):
+        """Linux uses XDG data directory."""
+        path = get_default_data_path()
+        assert ".local/share/prime-uve" in str(path)
+
+    @patch("platform.system", return_value="Darwin")
+    def test_data_path_macos(self, mock_system):
+        """macOS uses Library/Application Support."""
+        path = get_default_data_path()
+        assert "Library/Application Support/prime-uve" in str(path)
+
+    @patch("platform.system", return_value="Windows")
+    @patch.dict(os.environ, {"LOCALAPPDATA": "C:\\Users\\test\\AppData\\Local"})
+    def test_data_path_windows(self, mock_system):
+        """Windows uses LOCALAPPDATA/Data."""
+        path = get_default_data_path()
+        assert "prime-uve" in str(path)
+        assert "Data" in str(path)
+
+    @patch.dict(os.environ, {"PRIMEUVE_VENVS_PATH": "/custom/venvs"})
+    def test_venvs_cache_path_override(self):
+        """PRIMEUVE_VENVS_PATH environment variable overrides default."""
+        path = get_venvs_cache_path()
+        assert str(path) == "/custom/venvs"
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_venvs_cache_path_no_override(self):
+        """Without override, uses platform default."""
+        path = get_venvs_cache_path()
+        assert "prime-uve" in str(path)
+        assert "venvs" in str(path)
+
+    @patch("platform.system", return_value="Linux")
+    @patch.dict(os.environ, {"XDG_CACHE_HOME": "/custom/cache"})
+    def test_venvs_cache_path_xdg_override(self, mock_system):
+        """Linux respects XDG_CACHE_HOME environment variable."""
+        path = get_default_venvs_cache_path()
+        assert str(path) == "/custom/cache/prime-uve/venvs"
+
+    @patch("platform.system", return_value="Linux")
+    @patch.dict(os.environ, {"XDG_DATA_HOME": "/custom/data"})
+    def test_data_path_xdg_override(self, mock_system):
+        """Linux respects XDG_DATA_HOME environment variable."""
+        path = get_default_data_path()
+        assert str(path) == "/custom/data/prime-uve"
+
+
 class TestIntegration:
     """Integration tests for full workflow."""
 
@@ -347,16 +444,17 @@ class TestIntegration:
         venv_path = generate_venv_path(project_path)
 
         # Verify format
-        assert venv_path.startswith("${HOME}/.prime-uve/venvs/")
+        assert venv_path.startswith("${PRIMEUVE_VENVS_PATH}/")
         assert "my-awesome-project_" in venv_path
 
         # Expand for local use
         expanded = expand_path_variables(venv_path)
 
         # Verify expansion
-        assert "${HOME}" not in str(expanded)
+        assert "${PRIMEUVE_VENVS_PATH}" not in str(expanded)
         assert expanded.is_absolute()
         assert "prime-uve" in str(expanded)
+        assert "venvs" in str(expanded)
         assert "my-awesome-project_" in str(expanded)
 
     def test_cross_platform_consistency(self, tmp_path):
@@ -366,6 +464,7 @@ class TestIntegration:
 
         venv_path = generate_venv_path(project_path)
 
-        # Should always use ${HOME} regardless of platform
-        assert venv_path.startswith("${HOME}/")
+        # Should always use ${PRIMEUVE_VENVS_PATH} regardless of platform
+        assert venv_path.startswith("${PRIMEUVE_VENVS_PATH}/")
+        assert "${HOME}" not in venv_path
         assert "${USERPROFILE}" not in venv_path
