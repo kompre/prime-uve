@@ -1,11 +1,5 @@
 """Tests for disk usage utilities."""
 
-import os
-import tempfile
-from pathlib import Path
-
-import pytest
-
 from prime_uve.utils.disk import format_bytes, get_disk_usage
 
 
@@ -105,9 +99,7 @@ class TestGetDiskUsage:
         size_os_walk = get_disk_usage(test_dir)
 
         # Calculate using rglob (old method)
-        size_rglob = sum(
-            f.stat().st_size for f in test_dir.rglob("*") if f.is_file()
-        )
+        size_rglob = sum(f.stat().st_size for f in test_dir.rglob("*") if f.is_file())
 
         assert size_os_walk == size_rglob == 3000
 

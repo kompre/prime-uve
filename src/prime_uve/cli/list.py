@@ -13,7 +13,7 @@ from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import read_env_file
 from prime_uve.core.paths import expand_path_variables
 from prime_uve.utils.disk import format_bytes, get_disk_usage
-from prime_uve.utils.venv import find_untracked_venvs, scan_venv_directory
+from prime_uve.utils.venv import find_untracked_venvs
 
 
 @dataclass
@@ -502,7 +502,9 @@ def list_command(
         results.append(result)
 
     # 3. Find and add untracked venvs as orphans
-    untracked_venvs = find_untracked_venvs(mappings, calculate_disk_usage=calculate_sizes)
+    untracked_venvs = find_untracked_venvs(
+        mappings, calculate_disk_usage=calculate_sizes
+    )
     results.extend(untracked_venvs)
 
     # If no venvs at all (cached or untracked)

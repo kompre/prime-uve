@@ -178,7 +178,9 @@ def prune_all(
             {
                 "project_name": u["project_name"],
                 "venv_path_expanded": u["venv_path_expanded"],
-                "disk_usage": u["disk_usage_bytes"],  # Shared utils uses disk_usage_bytes
+                "disk_usage": u[
+                    "disk_usage_bytes"
+                ],  # Shared utils uses disk_usage_bytes
                 "tracked": False,
             }
         )
@@ -397,14 +399,18 @@ def prune_orphan(
     # Find untracked venvs (also treat as orphans)
     untracked_venvs = find_untracked_venvs(mappings, calculate_disk_usage=True)
     for untracked in untracked_venvs:
-        total_size += untracked["disk_usage_bytes"]  # Shared utils uses disk_usage_bytes
+        total_size += untracked[
+            "disk_usage_bytes"
+        ]  # Shared utils uses disk_usage_bytes
         orphaned_venvs.append(
             {
                 "project_name": untracked["project_name"],
                 "project_path": None,  # No associated project
                 "venv_path": None,  # No cache entry
                 "venv_path_expanded": str(untracked["venv_path_expanded"]),
-                "size": untracked["disk_usage_bytes"],  # Shared utils uses disk_usage_bytes
+                "size": untracked[
+                    "disk_usage_bytes"
+                ],  # Shared utils uses disk_usage_bytes
                 "is_tracked": False,  # Mark as untracked
             }
         )
