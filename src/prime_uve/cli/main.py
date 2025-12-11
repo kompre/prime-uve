@@ -226,6 +226,31 @@ def register(
     register_command(ctx, verbose, yes, dry_run, json_output)
 
 
+@cli.command(name="dir")
+@common_options
+@handle_errors
+@click.pass_context
+def dir_command(
+    ctx,
+    verbose: bool,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+):
+    """Open the venvs base directory in file explorer.
+
+    Opens the centralized location where all virtual environments are stored:
+    ${HOME}/.prime-uve/venvs
+
+    Usage:
+        prime-uve dir         # Open venvs directory
+        prime-uve dir --verbose # Show path before opening
+    """
+    from prime_uve.cli.dir import dir_command as dir_cmd
+
+    dir_cmd(ctx, verbose, yes, dry_run, json_output)
+
+
 @cli.group()
 def configure():
     """Configure integrations (VS Code, etc.)."""
