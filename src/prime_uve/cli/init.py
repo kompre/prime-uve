@@ -103,7 +103,7 @@ def init_command(
             ):
                 raise click.Abort()
 
-    # 5. Generate venv path (always uses ${HOME})
+    # 5. Generate venv path (uses ${PRIMEUVE_VENVS_PATH} variable)
     # Note: venv_dir parameter is currently not supported by generate_venv_path
     # For now, ignore the --venv-dir option
     venv_path = generate_venv_path(project_root)

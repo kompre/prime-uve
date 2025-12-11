@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 from prime_uve.core.env_file import find_env_file_strict
+from prime_uve.core.paths import get_venvs_cache_path
 
 
 def is_uv_available() -> bool:
@@ -25,7 +26,9 @@ def main() -> None:
     """Main entry point for uve command.
 
     Wraps uv commands with automatic .env.uve injection for external venv support.
-    Ensures HOME environment variable is set on Windows for cross-platform compatibility.
+    Ensures required environment variables are set:
+    - HOME: Set on Windows for cross-platform compatibility
+    - PRIMEUVE_VENVS_PATH: Set to platform-appropriate venv cache path if not already set
 
     Usage:
         uve add requests       → uv run --env-file .env.uve -- uv add requests
@@ -45,11 +48,17 @@ def main() -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # 2. Ensure HOME is set on Windows for cross-platform compatibility
+    # 2. Prepare environment variables
     env = os.environ.copy()
+
+    # Ensure HOME is set on Windows for cross-platform compatibility
     if sys.platform == "win32" and "HOME" not in env:
         # Set HOME from USERPROFILE on Windows
         env["HOME"] = env.get("USERPROFILE", os.path.expanduser("~"))
+
+    # Inject PRIMEUVE_VENVS_PATH if not already set (for .env.uve variable expansion)
+    if "PRIMEUVE_VENVS_PATH" not in env:
+        env["PRIMEUVE_VENVS_PATH"] = str(get_venvs_cache_path())
 
     # 3. Build command: uv run --env-file .env.uve -- uv [args...]
     args = sys.argv[1:]  # All args after 'uve'
