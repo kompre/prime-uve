@@ -335,7 +335,17 @@ def vscode(
     from prime_uve.cli.configure import configure_vscode_command
 
     configure_vscode_command(
-        ctx, workspace, create, suffix, merge, expand, export_as_default, verbose, yes, dry_run, json_output
+        ctx,
+        workspace,
+        create,
+        suffix,
+        merge,
+        expand,
+        export_as_default,
+        verbose,
+        yes,
+        dry_run,
+        json_output,
     )
 
 

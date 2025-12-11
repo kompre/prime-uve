@@ -34,7 +34,9 @@ def find_workspace_files(project_root: Path) -> list[Path]:
     return sorted(workspace_files)
 
 
-def find_default_workspace(project_root: Path, workspace_files: list[Path]) -> Path | None:
+def find_default_workspace(
+    project_root: Path, workspace_files: list[Path]
+) -> Path | None:
     """Find the default workspace file to use for merging.
 
     Priority order:
@@ -53,14 +55,14 @@ def find_default_workspace(project_root: Path, workspace_files: list[Path]) -> P
     if not workspace_files:
         return None
 
-    PLATFORM_SUFFIXES = ['linux', 'macos', 'windows', 'darwin', 'win32']
+    PLATFORM_SUFFIXES = ["linux", "macos", "windows", "darwin", "win32"]
 
     # Filter out files with platform suffixes
     non_platform_files = []
     for wf in workspace_files:
         # Get the stem and check if it ends with a platform suffix
         stem = wf.stem  # e.g., "project.linux" -> "project.linux"
-        parts = stem.split('.')
+        parts = stem.split(".")
         if len(parts) > 1 and parts[-1] in PLATFORM_SUFFIXES:
             continue  # Skip platform-suffixed files
         non_platform_files.append(wf)
