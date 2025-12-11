@@ -212,15 +212,20 @@ def configure_vscode_command(
         workspace_files = find_workspace_files(project_root)
 
         if suffix:
-            # When suffix is provided, we want to create a new suffixed file
+            # When suffix is provided, we want to create/update a suffixed file
             # Use the first existing workspace as a base, or project name if none exist
             existing_workspace = workspace_files[0] if workspace_files else None
             workspace_file = get_workspace_filename(
                 project_root, suffix, existing_workspace
             )
 
-            # If the suffixed file doesn't exist, we'll create it
-            if not workspace_file.exists():
+            # Check if the suffixed file exists
+            if workspace_file.exists():
+                # Suffixed file exists - we'll update it
+                workspace_data = read_workspace(workspace_file)
+                workspace_created = False
+            else:
+                # Suffixed file doesn't exist - create it
                 workspace_created = True
                 if existing_workspace and existing_workspace.exists():
                     # Copy settings from existing workspace
@@ -241,10 +246,11 @@ def configure_vscode_command(
             workspace_file = get_workspace_filename(project_root, None, None)
             workspace_data = create_default_workspace(project_root, interpreter_path)
 
-        # Handle suffix workspace creation (if we created one above)
-        if suffix and workspace_created:
+        # Handle suffix workspace (both create and update)
+        if suffix:
             if verbose:
-                info(f"Creating workspace: {workspace_file}")
+                action = "Creating" if workspace_created else "Updating"
+                info(f"{action} workspace: {workspace_file}")
                 info(f"Interpreter: {interpreter_path}")
 
             # Update interpreter path in the workspace data
@@ -262,15 +268,16 @@ def configure_vscode_command(
                 echo("\n  2. Reload window if already open:")
                 echo('     Ctrl+Shift+P → "Developer: Reload Window"')
             else:
-                echo(f"[DRY RUN] Would create: {workspace_file}")
+                action = "create" if workspace_created else "update"
+                echo(f"[DRY RUN] Would {action}: {workspace_file}")
                 echo(f"[DRY RUN] Interpreter: {interpreter_path}")
 
             if json_output:
                 print_json(
                     {
                         "workspace_file": str(workspace_file),
-                        "created": True,
-                        "updated": False,
+                        "created": workspace_created,
+                        "updated": not workspace_created,
                         "interpreter_path": str(interpreter_path),
                         "previous_interpreter": None,
                     }
