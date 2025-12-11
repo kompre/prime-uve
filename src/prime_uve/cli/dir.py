@@ -3,13 +3,14 @@
 import subprocess
 import sys
 
-import click
 
 from prime_uve.cli.output import error, info
 from prime_uve.core.paths import get_venv_base_dir
 
 
-def dir_command(ctx, verbose: bool, yes: bool, dry_run: bool, json_output: bool) -> None:
+def dir_command(
+    ctx, verbose: bool, yes: bool, dry_run: bool, json_output: bool
+) -> None:
     """
     Open the venvs base directory in the system file explorer.
 

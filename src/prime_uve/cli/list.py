@@ -136,7 +136,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
         click.style(f"{_SYMBOLS['success']}", fg="green"),
         ": valid | ",
         click.style(f"{_SYMBOLS['error']}", fg="red"),
-        ": orphan | <>: current project\n"
+        ": orphan | <>: current project\n",
     ]
     click.echo("".join(legend_parts))
 
@@ -275,7 +275,9 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             # Prepare project path display (truncate if needed)
             project_path_str = str(project_path) if project_path else "N/A"
             if project_path and len(project_path_str) > PROJECT_PATH_WIDTH:
-                project_path_display = truncate_path(project_path_str, PROJECT_PATH_WIDTH)
+                project_path_display = truncate_path(
+                    project_path_str, PROJECT_PATH_WIDTH
+                )
                 has_truncated_paths = True
             else:
                 project_path_display = project_path_str
