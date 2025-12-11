@@ -87,84 +87,22 @@ def validate_project_mapping(
     )
 
 
-def supports_hyperlinks() -> bool:
-    """Check if the terminal supports OSC 8 hyperlinks."""
-    import os
-
-    # Check if we're in a TTY and if terminal supports hyperlinks
-    # Windows Terminal, iTerm2, and modern terminals support OSC 8
-    if not sys.stdout.isatty():
-        return False
-
-    term = os.environ.get("TERM", "")
-    term_program = os.environ.get("TERM_PROGRAM", "")
-    wt_session = os.environ.get("WT_SESSION", "")
-
-    # Known terminals that support OSC 8
-    return bool(
-        wt_session  # Windows Terminal
-        or term_program in ("iTerm.app", "WezTerm", "vscode")
-        or "kitty" in term
-        or "alacritty" in term
-    )
-
-
-def make_clickable_path(path: str, display_text: str) -> str:
-    """
-    Create a clickable terminal hyperlink using OSC 8 escape sequences.
-
-    If terminal doesn't support hyperlinks, returns plain display text.
-
-    Format: \\x1b]8;;file://path\\x1b\\\\display_text\\x1b]8;;\\x1b\\\\
-
-    Args:
-        path: Actual file path (for the link)
-        display_text: Text to display (can be truncated)
-
-    Returns:
-        Formatted string with OSC 8 hyperlink, or plain text if unsupported
-    """
-    # If terminal doesn't support hyperlinks, return plain text
-    if not supports_hyperlinks():
-        return display_text
-
-    # Convert Windows path to file:// URL format
-    # For UNC paths like \\server\share, use file://server/share
-    # For drive paths like C:\path, use file:///C:/path
-    if path.startswith("\\\\"):
-        # UNC path: \\server\share\path -> file://server/share/path
-        file_url = "file:" + path.replace("\\", "/")
-    else:
-        # Drive path: C:\path -> file:///C:/path
-        file_url = "file:///" + path.replace("\\", "/")
-
-    # OSC 8 format: \x1b]8;;URL\x1b\\TEXT\x1b]8;;\x1b\\
-    # Using \x1b (ESC) instead of \033 for proper interpretation
-    return f"\x1b]8;;{file_url}\x1b\\{display_text}\x1b]8;;\x1b\\"
-
-
-def truncate_path(path: str, max_length: int, make_clickable: bool = False) -> str:
+def truncate_path(path: str, max_length: int) -> str:
     """
     Truncate path to fit max_length, keeping most relevant parts.
 
     Args:
         path: Path string
         max_length: Maximum length
-        make_clickable: If True, wrap in OSC 8 hyperlink to full path
 
     Returns:
-        Truncated path (optionally wrapped in hyperlink)
+        Truncated path
     """
     if len(path) <= max_length:
         return path
 
     # Try to keep the end (most specific part)
-    truncated = "..." + path[-(max_length - 3) :]
-
-    if make_clickable:
-        return make_clickable_path(path, truncated)
-
-    return truncated
+    return "..." + path[-(max_length - 5) :]
 
 
 def get_current_project_root() -> Path | None:
@@ -192,10 +130,15 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
     """
     echo("Managed Virtual Environments\n")
 
-    # Show legend
-    click.secho(
-        f"Legend: {_SYMBOLS['success']}: valid | {_SYMBOLS['error']}: orphan | >: current project\n"
-    )
+    # Show legend with colored symbols
+    legend_parts = [
+        "Legend: ",
+        click.style(f"{_SYMBOLS['success']}", fg="green"),
+        ": valid | ",
+        click.style(f"{_SYMBOLS['error']}", fg="red"),
+        ": orphan | <>: current project\n"
+    ]
+    click.echo("".join(legend_parts))
 
     # Get current project root for highlighting
     current_project_root = get_current_project_root()
@@ -253,7 +196,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
 
             # Use symbols from output module
             status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
-            current_marker = ">" if is_current else " "
+            current_marker = "<>" if is_current else "  "
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
             status_display = f"{status_symbol}{current_marker} {status_text}"
@@ -261,7 +204,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             color = "green" if is_valid else "red"
             # Show project name, status, size on first line
             formatted_line = f"{project_name:<20} "
-            click.secho(formatted_line, nl=False, bold=is_current)
+            click.secho(formatted_line, nl=False, fg="magenta", bold=is_current)
             click.secho(f"{status_display:<15}", fg=color, nl=False, bold=is_current)
             click.secho(f" {size}", bold=is_current)  # Size on same line
 
@@ -286,10 +229,13 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
         # Define column widths as constants
         STATUS_WIDTH = 7
         PROJECT_PATH_WIDTH = 60
+        VENV_PATH_WIDTH = 60
 
         header = f"{'STATUS':<{STATUS_WIDTH}} {'PROJECT PATH':<{PROJECT_PATH_WIDTH}} {'VENV PATH'}"
         echo(header)
         echo("-" * 140)  # Wider separator for new format
+
+        has_truncated_paths = False
 
         for result in results:
             # Handle both ValidationResult and untracked venv dicts
@@ -321,79 +267,58 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
 
             # Use symbols from output module - compact status
             status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
-            current_marker = ">" if is_current else " "
+            current_marker = "<>" if is_current else "  "
             status_display = f"{status_symbol}{current_marker}"
 
-            # Prepare project path display (truncate if needed, make clickable)
+            # Prepare project path display (truncate if needed)
             project_path_str = str(project_path) if project_path else "N/A"
-            # Truncate to width - 2 to leave room for "..." prefix
-            max_truncate_length = PROJECT_PATH_WIDTH - 2
-            needs_truncation = (
-                project_path and len(project_path_str) > PROJECT_PATH_WIDTH
-            )
-
-            if needs_truncation:
-                # Truncate and make clickable
-                truncated_text = truncate_path(
-                    project_path_str, max_truncate_length, make_clickable=False
-                )
-                project_path_display = make_clickable_path(
-                    project_path_str, truncated_text
-                )
-                # For visible length: "..." (3) + remaining chars = max_truncate_length
-                visible_length = len(truncated_text)
+            if project_path and len(project_path_str) > PROJECT_PATH_WIDTH:
+                project_path_display = truncate_path(project_path_str, PROJECT_PATH_WIDTH)
+                has_truncated_paths = True
             else:
-                # Short enough, make clickable without truncation
-                if project_path:
-                    project_path_display = make_clickable_path(
-                        project_path_str, project_path_str
-                    )
-                else:
-                    project_path_display = project_path_str
-                visible_length = len(project_path_str)
+                project_path_display = project_path_str
 
-            # Calculate padding needed to reach PROJECT_PATH_WIDTH
-            padding_needed = PROJECT_PATH_WIDTH - visible_length
-
-            # Make venv path clickable
+            # Prepare venv path display (truncate if needed)
             venv_path_str = str(venv_path_expanded)
-            venv_path_display = make_clickable_path(venv_path_str, venv_path_str)
+            if len(venv_path_str) > VENV_PATH_WIDTH:
+                venv_path_display = truncate_path(venv_path_str, VENV_PATH_WIDTH)
+                has_truncated_paths = True
+            else:
+                venv_path_display = venv_path_str
 
             color = "green" if is_valid else "red"
 
             # Format: STATUS | PROJECT PATH | VENV PATH
-            # Build styled components with proper padding
             status_styled = click.style(
                 f"{status_display:<{STATUS_WIDTH}}",
                 fg=color,
                 bold=is_current,
             )
+            project_path_styled = click.style(
+                f"{project_path_display:<{PROJECT_PATH_WIDTH}}",
+                bold=is_current,
+            )
+            venv_path_styled = click.style(
+                venv_path_display,
+                bold=is_current,
+            )
 
-            # Project path with padding and clickable link
-            # Note: click.style() doesn't work with hyperlinks, so we use manual ANSI codes
-            project_path_padded = f"{project_path_display}{' ' * padding_needed}"
-            if is_current:
-                project_path_styled = f"\x1b[1m{project_path_padded}\x1b[0m"
-            else:
-                project_path_styled = project_path_padded
-
-            # Venv path with clickable link
-            if is_current:
-                venv_path_styled = f"\x1b[1m{venv_path_display}\x1b[0m"
-            else:
-                venv_path_styled = venv_path_display
-
-            # Output all columns in one call with proper spacing
+            # Output all columns
             click.echo(f"{status_styled} {project_path_styled} {venv_path_styled}")
 
+        # Add hint about verbose mode if paths were truncated
+        if has_truncated_paths:
+            echo("\nTip: Use --verbose to see full paths")
+
     # Summary
-    echo(
-        f"\nSummary: {stats['total']} total, {stats['valid']} valid, {stats['orphaned']} orphaned"
+    click.secho(
+        f"\nSummary: {stats['total']} total, {stats['valid']} valid, {stats['orphaned']} orphaned",
+        bold=True,
     )
 
     if verbose and stats["total_disk_usage"] > 0:
         total_size = format_bytes(stats["total_disk_usage"])
-        echo(f"Total disk usage: {total_size}")
+        click.secho(f"Total disk usage: {total_size}", bold=True)
 
 
 def output_json_format(results: list, stats: dict) -> None:
