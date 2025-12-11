@@ -280,6 +280,12 @@ def configure():
     default=False,
     help="Use fully expanded absolute paths instead of VS Code variables",
 )
+@click.option(
+    "--export-as-default",
+    is_flag=False,
+    flag_value="__merge__",
+    help="Save workspace as default in .env.uve (uses --merge source if provided, otherwise specify file)",
+)
 @common_options
 @handle_errors
 @click.pass_context
@@ -290,6 +296,7 @@ def vscode(
     suffix: Optional[str],
     merge: Optional[str],
     expand: bool,
+    export_as_default: Optional[str],
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -319,12 +326,16 @@ def vscode(
 
         prime-uve configure vscode --workspace myproject.code-workspace
 
+        prime-uve configure vscode --export-as-default myproject.code-workspace  # Set default workspace for merging
+
+        prime-uve configure vscode --suffix --merge joe.code-workspace --export-as-default  # Merge from joe.code-workspace and set as default
+
         prime-uve configure vscode --dry-run          # Preview changes
     """
     from prime_uve.cli.configure import configure_vscode_command
 
     configure_vscode_command(
-        ctx, workspace, create, suffix, merge, expand, verbose, yes, dry_run, json_output
+        ctx, workspace, create, suffix, merge, expand, export_as_default, verbose, yes, dry_run, json_output
     )
 
 

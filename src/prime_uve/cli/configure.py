@@ -6,7 +6,7 @@ from pathlib import Path
 import click
 
 from prime_uve.cli.output import confirm, echo, error, info, print_json, success
-from prime_uve.core.env_file import read_env_file
+from prime_uve.core.env_file import read_env_file, update_env_file
 from prime_uve.core.paths import expand_path_variables
 from prime_uve.core.project import find_project_root
 from prime_uve.utils.vscode import (
@@ -113,6 +113,7 @@ def configure_vscode_command(
     suffix: str | None,
     merge: str | None,
     expand: bool,
+    export_as_default: str | None,
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -127,6 +128,7 @@ def configure_vscode_command(
         suffix: Create platform-specific workspace file with suffix (None or "__auto__" for OS name)
         merge: Merge settings from another workspace (None, "__default__" for default, or path)
         expand: Use fully expanded absolute paths instead of VS Code variables
+        export_as_default: Save workspace as default in .env.uve ("__merge__" to use merge source, or path)
         verbose: Show detailed output
         yes: Skip confirmations
         dry_run: Show what would be done
@@ -142,6 +144,14 @@ def configure_vscode_command(
             "--merge option requires --suffix\n"
             "The merge option is only meaningful when creating platform-specific workspace files.\n\n"
             "Usage: prime-uve configure vscode --suffix --merge [FILE]"
+        )
+
+    # Validate --export-as-default with __merge__ requires --merge
+    if export_as_default == "__merge__" and merge is None:
+        raise ValueError(
+            "--export-as-default (without value) requires --merge\n"
+            "To export the merge source as default, use both options together.\n\n"
+            "Usage: prime-uve configure vscode --suffix --merge <file> --export-as-default"
         )
 
     # Resolve suffix if __auto__
@@ -172,6 +182,9 @@ def configure_vscode_command(
             ".env.uve missing UV_PROJECT_ENVIRONMENT\n\n"
             "Run 'prime-uve init --force' to reinitialize."
         )
+
+    # Get default workspace from .env.uve if set
+    default_workspace = env_vars.get("PRIMEUVE_DEFAULT_CW")
 
     venv_path_expanded = expand_path_variables(venv_path_var)
 
@@ -275,13 +288,22 @@ def configure_vscode_command(
             if merge is not None:
                 # Resolve merge source
                 if merge == "__default__":
-                    merge_source = find_default_workspace(project_root, workspace_files)
-                    if merge_source is None:
-                        raise ValueError(
-                            "No default workspace found to merge from\n"
-                            "Cannot determine which workspace to merge.\n\n"
-                            "Specify a workspace file explicitly with --merge <file>"
-                        )
+                    # First check if PRIMEUVE_DEFAULT_CW is set in .env.uve
+                    if default_workspace:
+                        merge_source = Path(default_workspace)
+                        if not merge_source.is_absolute():
+                            merge_source = project_root / merge_source
+                        if verbose:
+                            info(f"Using default workspace from .env.uve: {merge_source.name}")
+                    else:
+                        # Fall back to auto-detection
+                        merge_source = find_default_workspace(project_root, workspace_files)
+                        if merge_source is None:
+                            raise ValueError(
+                                "No default workspace found to merge from\n"
+                                "Cannot determine which workspace to merge.\n\n"
+                                "Specify a workspace file explicitly with --merge <file> or set default with --export-as-default"
+                            )
                 else:
                     # User specified a file
                     merge_source = Path(merge)
@@ -308,6 +330,44 @@ def configure_vscode_command(
                 if verbose:
                     info(f"Merged settings from: {merge_source.name}")
 
+            # Handle export-as-default
+            if export_as_default is not None:
+                # Determine which workspace to export as default
+                if export_as_default == "__merge__":
+                    # Use merge source as default
+                    if merge is None:
+                        # This should be caught by validation, but double-check
+                        raise ValueError("Cannot export merge source as default without --merge")
+                    default_to_export = merge_source
+                else:
+                    # User specified a workspace file
+                    default_to_export = Path(export_as_default)
+                    if not default_to_export.is_absolute():
+                        default_to_export = project_root / default_to_export
+
+                    # Validate the file exists
+                    if not default_to_export.exists():
+                        raise ValueError(
+                            f"Cannot export as default: {default_to_export}\n\n"
+                            f"The specified workspace file does not exist."
+                        )
+
+                # Get relative path if within project, otherwise absolute
+                try:
+                    relative_path = default_to_export.relative_to(project_root)
+                    workspace_to_save = str(relative_path)
+                except ValueError:
+                    # Not relative to project root, use absolute path
+                    workspace_to_save = str(default_to_export)
+
+                # Write to .env.uve
+                if not dry_run:
+                    update_env_file(env_file, {"PRIMEUVE_DEFAULT_CW": workspace_to_save})
+                    if verbose:
+                        info(f"Set default workspace in .env.uve: {workspace_to_save}")
+                else:
+                    echo(f"[DRY RUN] Would set PRIMEUVE_DEFAULT_CW={workspace_to_save} in .env.uve")
+
             # Update interpreter path in the workspace data
             workspace_data = update_workspace_settings(workspace_data, interpreter_path)
 
@@ -317,6 +377,8 @@ def configure_vscode_command(
                 echo(f"\nWorkspace: {workspace_file.name}")
                 echo("\nSettings applied:")
                 echo(f"  ✓ Python interpreter: {interpreter_path}")
+                if export_as_default is not None:
+                    echo(f"  ✓ Default workspace saved to .env.uve")
                 echo("\nNext steps:")
                 echo("  1. Open workspace in VS Code:")
                 echo(f"     code {workspace_file.name}")
@@ -326,6 +388,8 @@ def configure_vscode_command(
                 action = "create" if workspace_created else "update"
                 echo(f"[DRY RUN] Would {action}: {workspace_file}")
                 echo(f"[DRY RUN] Interpreter: {interpreter_path}")
+                if export_as_default is not None:
+                    echo(f"[DRY RUN] Would set default workspace in .env.uve")
 
             if json_output:
                 print_json(
@@ -431,6 +495,36 @@ def configure_vscode_command(
     # Update settings
     workspace_data = update_workspace_settings(workspace_data, interpreter_path)
 
+    # Handle export-as-default (for non-suffix workspaces)
+    if export_as_default is not None and not suffix:
+        # User must specify a workspace file explicitly
+        default_to_export = Path(export_as_default)
+        if not default_to_export.is_absolute():
+            default_to_export = project_root / default_to_export
+
+        # Validate the file exists
+        if not default_to_export.exists():
+            raise ValueError(
+                f"Cannot export as default: {default_to_export}\n\n"
+                f"The specified workspace file does not exist."
+            )
+
+        # Get relative path if within project, otherwise absolute
+        try:
+            relative_path = default_to_export.relative_to(project_root)
+            workspace_to_save = str(relative_path)
+        except ValueError:
+            # Not relative to project root, use absolute path
+            workspace_to_save = str(default_to_export)
+
+        # Write to .env.uve
+        if not dry_run:
+            update_env_file(env_file, {"PRIMEUVE_DEFAULT_CW": workspace_to_save})
+            if verbose:
+                info(f"Set default workspace in .env.uve: {workspace_to_save}")
+        else:
+            echo(f"[DRY RUN] Would set PRIMEUVE_DEFAULT_CW={workspace_to_save} in .env.uve")
+
     # Write changes
     if dry_run:
         echo(f"[DRY RUN] Would update workspace: {workspace_file.name}")
@@ -440,12 +534,16 @@ def configure_vscode_command(
         echo(f"    New: {interpreter_path}")
         echo("  settings.python.terminal.activateEnvironment: true")
         echo('  settings.python.envFile: "${workspaceFolder}/.env.uve"')
+        if export_as_default is not None:
+            echo(f"\n[DRY RUN] Would set default workspace in .env.uve")
     else:
         write_workspace(workspace_file, workspace_data)
         success("VS Code workspace configured")
         echo(f"\nWorkspace: {workspace_file.name}")
         echo("\nSettings applied:")
         echo(f"  ✓ Python interpreter: {interpreter_path}")
+        if export_as_default is not None:
+            echo(f"  ✓ Default workspace saved to .env.uve")
         echo("\nNext steps:")
         echo("  1. Open workspace in VS Code:")
         echo(f"     code {workspace_file.name}")
