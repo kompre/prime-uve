@@ -294,10 +294,14 @@ def configure_vscode_command(
                         if not merge_source.is_absolute():
                             merge_source = project_root / merge_source
                         if verbose:
-                            info(f"Using default workspace from .env.uve: {merge_source.name}")
+                            info(
+                                f"Using default workspace from .env.uve: {merge_source.name}"
+                            )
                     else:
                         # Fall back to auto-detection
-                        merge_source = find_default_workspace(project_root, workspace_files)
+                        merge_source = find_default_workspace(
+                            project_root, workspace_files
+                        )
                         if merge_source is None:
                             raise ValueError(
                                 "No default workspace found to merge from\n"
@@ -337,7 +341,9 @@ def configure_vscode_command(
                     # Use merge source as default
                     if merge is None:
                         # This should be caught by validation, but double-check
-                        raise ValueError("Cannot export merge source as default without --merge")
+                        raise ValueError(
+                            "Cannot export merge source as default without --merge"
+                        )
                     default_to_export = merge_source
                 else:
                     # User specified a workspace file
@@ -362,11 +368,15 @@ def configure_vscode_command(
 
                 # Write to .env.uve
                 if not dry_run:
-                    update_env_file(env_file, {"PRIMEUVE_DEFAULT_CW": workspace_to_save})
+                    update_env_file(
+                        env_file, {"PRIMEUVE_DEFAULT_CW": workspace_to_save}
+                    )
                     if verbose:
                         info(f"Set default workspace in .env.uve: {workspace_to_save}")
                 else:
-                    echo(f"[DRY RUN] Would set PRIMEUVE_DEFAULT_CW={workspace_to_save} in .env.uve")
+                    echo(
+                        f"[DRY RUN] Would set PRIMEUVE_DEFAULT_CW={workspace_to_save} in .env.uve"
+                    )
 
             # Update interpreter path in the workspace data
             workspace_data = update_workspace_settings(workspace_data, interpreter_path)
@@ -378,7 +388,7 @@ def configure_vscode_command(
                 echo("\nSettings applied:")
                 echo(f"  ✓ Python interpreter: {interpreter_path}")
                 if export_as_default is not None:
-                    echo(f"  ✓ Default workspace saved to .env.uve")
+                    echo("  ✓ Default workspace saved to .env.uve")
                 echo("\nNext steps:")
                 echo("  1. Open workspace in VS Code:")
                 echo(f"     code {workspace_file.name}")
@@ -389,7 +399,7 @@ def configure_vscode_command(
                 echo(f"[DRY RUN] Would {action}: {workspace_file}")
                 echo(f"[DRY RUN] Interpreter: {interpreter_path}")
                 if export_as_default is not None:
-                    echo(f"[DRY RUN] Would set default workspace in .env.uve")
+                    echo("[DRY RUN] Would set default workspace in .env.uve")
 
             if json_output:
                 print_json(
@@ -523,7 +533,9 @@ def configure_vscode_command(
             if verbose:
                 info(f"Set default workspace in .env.uve: {workspace_to_save}")
         else:
-            echo(f"[DRY RUN] Would set PRIMEUVE_DEFAULT_CW={workspace_to_save} in .env.uve")
+            echo(
+                f"[DRY RUN] Would set PRIMEUVE_DEFAULT_CW={workspace_to_save} in .env.uve"
+            )
 
     # Write changes
     if dry_run:
@@ -535,7 +547,7 @@ def configure_vscode_command(
         echo("  settings.python.terminal.activateEnvironment: true")
         echo('  settings.python.envFile: "${workspaceFolder}/.env.uve"')
         if export_as_default is not None:
-            echo(f"\n[DRY RUN] Would set default workspace in .env.uve")
+            echo("\n[DRY RUN] Would set default workspace in .env.uve")
     else:
         write_workspace(workspace_file, workspace_data)
         success("VS Code workspace configured")
@@ -543,7 +555,7 @@ def configure_vscode_command(
         echo("\nSettings applied:")
         echo(f"  ✓ Python interpreter: {interpreter_path}")
         if export_as_default is not None:
-            echo(f"  ✓ Default workspace saved to .env.uve")
+            echo("  ✓ Default workspace saved to .env.uve")
         echo("\nNext steps:")
         echo("  1. Open workspace in VS Code:")
         echo(f"     code {workspace_file.name}")
