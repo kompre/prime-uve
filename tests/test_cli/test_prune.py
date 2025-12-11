@@ -254,7 +254,7 @@ class TestPruneCommand:
         assert "[DRY RUN]" in result.output
         mock_cache.clear.assert_not_called()  # Should not clear in dry run
 
-    @patch("prime_uve.cli.prune.scan_venv_directory")
+    @patch("prime_uve.utils.venv.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
     def test_prune_command_orphan_json_output(
         self, mock_cache_class, mock_scan, runner, tmp_path
@@ -280,7 +280,7 @@ class TestPruneAll:
     """Tests for prune_all function."""
 
     @patch("prime_uve.cli.prune.auto_register_current_project")
-    @patch("prime_uve.cli.prune.find_untracked_venvs")
+    @patch("prime_uve.utils.venv.find_untracked_venvs")
     @patch("prime_uve.cli.prune.Cache")
     def test_prune_all_empty_cache(
         self, mock_cache_class, mock_find_untracked, mock_auto_register, runner
@@ -347,7 +347,7 @@ class TestPruneAll:
         mock_cache.clear.assert_not_called()
 
     @patch("prime_uve.cli.prune.auto_register_current_project")
-    @patch("prime_uve.cli.prune.find_untracked_venvs")
+    @patch("prime_uve.cli.prune.find_untracked_venvs")  # Patch where it's imported
     @patch("prime_uve.cli.prune.expand_path_variables")
     @patch("prime_uve.cli.prune.Cache")
     def test_prune_all_removes_untracked_venvs(
@@ -381,7 +381,7 @@ class TestPruneAll:
                 "project_name": "<unknown: orphan>",
                 "venv_path": None,
                 "venv_path_expanded": untracked_venv,
-                "size": 512,
+                "disk_usage_bytes": 512,  # Shared utils uses disk_usage_bytes
             }
         ]
 
@@ -628,7 +628,7 @@ class TestPruneValid:
 class TestPruneOrphan:
     """Tests for prune_orphan function."""
 
-    @patch("prime_uve.cli.prune.scan_venv_directory")
+    @patch("prime_uve.utils.venv.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
     def test_prune_orphan_no_orphans(
         self, mock_cache_class, mock_scan, runner, tmp_path
@@ -659,7 +659,7 @@ class TestPruneOrphan:
         assert result.exit_code == 0
         assert "No orphaned venvs found" in result.output
 
-    @patch("prime_uve.cli.prune.scan_venv_directory")
+    @patch("prime_uve.utils.venv.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
     @patch("prime_uve.cli.prune.expand_path_variables")
     @patch("prime_uve.cli.prune.get_disk_usage")
