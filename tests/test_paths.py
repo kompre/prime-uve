@@ -16,7 +16,6 @@ from prime_uve.core.paths import (
     get_default_venvs_cache_path,
     get_venvs_cache_path,
     get_default_data_path,
-    get_data_path,
 )
 
 
