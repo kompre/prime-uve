@@ -102,7 +102,7 @@ def truncate_path(path: str, max_length: int) -> str:
         return path
 
     # Try to keep the end (most specific part)
-    return "..." + path[-(max_length - 5) :]
+    return "..." + path[-(max_length - 3) :]
 
 
 def get_current_project_root() -> Path | None:
@@ -231,9 +231,11 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
         PROJECT_PATH_WIDTH = 60
         VENV_PATH_WIDTH = 60
 
-        header = f"{'STATUS':<{STATUS_WIDTH}} {'PROJECT PATH':<{PROJECT_PATH_WIDTH}} {'VENV PATH'}"
+        header = f"{'STATUS':<{STATUS_WIDTH}}  {'PROJECT PATH':<{PROJECT_PATH_WIDTH}}  {'VENV PATH'}"
         echo(header)
-        echo("-" * 140)  # Wider separator for new format
+        # Separator width: STATUS_WIDTH + 2 spaces + PROJECT_PATH_WIDTH + 2 spaces + VENV_PATH_WIDTH
+        separator_width = STATUS_WIDTH + 2 + PROJECT_PATH_WIDTH + 2 + VENV_PATH_WIDTH
+        echo("-" * separator_width)
 
         has_truncated_paths = False
 
@@ -304,7 +306,7 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
             )
 
             # Output all columns
-            click.echo(f"{status_styled} {project_path_styled} {venv_path_styled}")
+            click.echo(f"{status_styled}  {project_path_styled}  {venv_path_styled}")
 
         # Add hint about verbose mode if paths were truncated
         if has_truncated_paths:
