@@ -522,7 +522,9 @@ def test_configure_vscode_uses_environment_variables(
     interpreter_path = data["settings"]["python.defaultInterpreterPath"]
 
     # Should contain VS Code variables (${userHome}), not the expanded absolute path
-    assert "${userHome}" in interpreter_path, f"Expected ${{userHome}} in path, got: {interpreter_path}"
+    assert "${userHome}" in interpreter_path, (
+        f"Expected ${{userHome}} in path, got: {interpreter_path}"
+    )
     assert "custom/venvs/test_venv" in interpreter_path
 
     # Should NOT contain the expanded tmp_path

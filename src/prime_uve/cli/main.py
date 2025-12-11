@@ -267,13 +267,13 @@ def configure():
     is_flag=False,
     flag_value="__auto__",
     default=None,
-    help="Create platform-specific workspace with suffix (uses OS name if no value given)"
+    help="Create platform-specific workspace with suffix (uses OS name if no value given)",
 )
 @click.option(
     "--expand",
     is_flag=True,
     default=False,
-    help="Use fully expanded absolute paths instead of VS Code variables"
+    help="Use fully expanded absolute paths instead of VS Code variables",
 )
 @common_options
 @handle_errors
@@ -313,7 +313,9 @@ def vscode(
     """
     from prime_uve.cli.configure import configure_vscode_command
 
-    configure_vscode_command(ctx, workspace, create, suffix, expand, verbose, yes, dry_run, json_output)
+    configure_vscode_command(
+        ctx, workspace, create, suffix, expand, verbose, yes, dry_run, json_output
+    )
 
 
 def main():

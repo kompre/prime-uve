@@ -184,7 +184,7 @@ def configure_vscode_command(
     # Determine interpreter path format based on --expand flag
     if expand:
         # Use fully expanded absolute path
-        interpreter_path = str(interpreter_path_expanded).replace('\\', '/')
+        interpreter_path = str(interpreter_path_expanded).replace("\\", "/")
     else:
         # Use VS Code variables for cross-platform compatibility
         interpreter_path = absolute_to_vscode_path(interpreter_path_expanded)
@@ -204,7 +204,9 @@ def configure_vscode_command(
 
         # If suffix provided, create suffixed version based on specified file
         if suffix:
-            workspace_file = get_workspace_filename(project_root, suffix, workspace_file)
+            workspace_file = get_workspace_filename(
+                project_root, suffix, workspace_file
+            )
     else:
         # Auto-discover workspace files
         workspace_files = find_workspace_files(project_root)
@@ -213,7 +215,9 @@ def configure_vscode_command(
             # When suffix is provided, we want to create a new suffixed file
             # Use the first existing workspace as a base, or project name if none exist
             existing_workspace = workspace_files[0] if workspace_files else None
-            workspace_file = get_workspace_filename(project_root, suffix, existing_workspace)
+            workspace_file = get_workspace_filename(
+                project_root, suffix, existing_workspace
+            )
 
             # If the suffixed file doesn't exist, we'll create it
             if not workspace_file.exists():
@@ -223,7 +227,9 @@ def configure_vscode_command(
                     workspace_data = read_workspace(existing_workspace)
                 else:
                     # Create new workspace
-                    workspace_data = create_default_workspace(project_root, interpreter_path)
+                    workspace_data = create_default_workspace(
+                        project_root, interpreter_path
+                    )
         elif not workspace_files:
             # No workspace files found
             if not create and not confirm(

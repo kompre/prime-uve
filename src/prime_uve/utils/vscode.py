@@ -192,9 +192,9 @@ def get_platform_suffix() -> str:
         User-friendly platform name (lowercase)
     """
     PLATFORM_SUFFIX_MAP = {
-        'Linux': 'linux',
-        'Darwin': 'macos',
-        'Windows': 'windows',
+        "Linux": "linux",
+        "Darwin": "macos",
+        "Windows": "windows",
     }
 
     return PLATFORM_SUFFIX_MAP.get(platform.system(), platform.system().lower())
@@ -221,41 +221,41 @@ def absolute_to_vscode_path(absolute_path: Path) -> str:
     system = platform.system()
 
     # Convert to forward slashes for consistency
-    path_str = path_str.replace('\\', '/')
+    path_str = path_str.replace("\\", "/")
 
     if system == "Linux":
         # Try to replace home directory
-        home = os.path.expanduser('~').replace('\\', '/')
+        home = os.path.expanduser("~").replace("\\", "/")
         if path_str.startswith(home):
-            return path_str.replace(home, '${userHome}', 1)
+            return path_str.replace(home, "${userHome}", 1)
 
         # Check for XDG_CACHE_HOME
-        xdg_cache = os.environ.get('XDG_CACHE_HOME')
+        xdg_cache = os.environ.get("XDG_CACHE_HOME")
         if xdg_cache:
-            xdg_cache = xdg_cache.replace('\\', '/')
+            xdg_cache = xdg_cache.replace("\\", "/")
             if path_str.startswith(xdg_cache):
-                return path_str.replace(xdg_cache, '${env:XDG_CACHE_HOME}', 1)
+                return path_str.replace(xdg_cache, "${env:XDG_CACHE_HOME}", 1)
 
     elif system == "Darwin":  # macOS
         # Replace home directory
-        home = os.path.expanduser('~').replace('\\', '/')
+        home = os.path.expanduser("~").replace("\\", "/")
         if path_str.startswith(home):
-            return path_str.replace(home, '${userHome}', 1)
+            return path_str.replace(home, "${userHome}", 1)
 
     elif system == "Windows":
         # Try LOCALAPPDATA first
-        localappdata = os.environ.get('LOCALAPPDATA')
+        localappdata = os.environ.get("LOCALAPPDATA")
         if localappdata:
-            localappdata = localappdata.replace('\\', '/')
+            localappdata = localappdata.replace("\\", "/")
             if path_str.startswith(localappdata):
-                return path_str.replace(localappdata, '${env:LOCALAPPDATA}', 1)
+                return path_str.replace(localappdata, "${env:LOCALAPPDATA}", 1)
 
         # Fallback to USERPROFILE
-        userprofile = os.environ.get('USERPROFILE')
+        userprofile = os.environ.get("USERPROFILE")
         if userprofile:
-            userprofile = userprofile.replace('\\', '/')
+            userprofile = userprofile.replace("\\", "/")
             if path_str.startswith(userprofile):
-                return path_str.replace(userprofile, '${userHome}', 1)
+                return path_str.replace(userprofile, "${userHome}", 1)
 
     # Fallback: return absolute path with forward slashes
     return path_str
@@ -264,7 +264,7 @@ def absolute_to_vscode_path(absolute_path: Path) -> str:
 def get_workspace_filename(
     project_root: Path,
     suffix: str | None = None,
-    existing_workspace: Path | None = None
+    existing_workspace: Path | None = None,
 ) -> Path:
     """Generate workspace filename with optional suffix.
 
@@ -290,9 +290,9 @@ def get_workspace_filename(
         # Extract base name without suffix
         name = existing_workspace.stem
         # Remove existing platform suffixes if any
-        for platform_suffix in ['linux', 'macos', 'windows', 'darwin', 'win32']:
-            if name.endswith(f'.{platform_suffix}'):
-                name = name[:-len(platform_suffix)-1]
+        for platform_suffix in ["linux", "macos", "windows", "darwin", "win32"]:
+            if name.endswith(f".{platform_suffix}"):
+                name = name[: -len(platform_suffix) - 1]
                 break
     else:
         # Use project name

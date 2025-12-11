@@ -330,24 +330,24 @@ def test_get_platform_suffix(monkeypatch):
     import platform as platform_mod
 
     # Test Linux
-    monkeypatch.setattr(platform_mod, 'system', lambda: 'Linux')
-    assert get_platform_suffix() == 'linux'
+    monkeypatch.setattr(platform_mod, "system", lambda: "Linux")
+    assert get_platform_suffix() == "linux"
 
     # Test macOS
-    monkeypatch.setattr(platform_mod, 'system', lambda: 'Darwin')
-    assert get_platform_suffix() == 'macos'
+    monkeypatch.setattr(platform_mod, "system", lambda: "Darwin")
+    assert get_platform_suffix() == "macos"
 
     # Test Windows
-    monkeypatch.setattr(platform_mod, 'system', lambda: 'Windows')
-    assert get_platform_suffix() == 'windows'
+    monkeypatch.setattr(platform_mod, "system", lambda: "Windows")
+    assert get_platform_suffix() == "windows"
 
 
 def test_get_platform_suffix_unknown(monkeypatch):
     """Test unknown platform fallback."""
     import platform as platform_mod
 
-    monkeypatch.setattr(platform_mod, 'system', lambda: 'FreeBSD')
-    assert get_platform_suffix() == 'freebsd'  # Lowercased
+    monkeypatch.setattr(platform_mod, "system", lambda: "FreeBSD")
+    assert get_platform_suffix() == "freebsd"  # Lowercased
 
 
 # Path Translation Tests
@@ -358,14 +358,14 @@ def test_absolute_to_vscode_path_linux(monkeypatch):
     import platform as platform_mod
     import os
 
-    monkeypatch.setattr(platform_mod, 'system', lambda: 'Linux')
-    monkeypatch.setattr(os.path, 'expanduser', lambda x: '/home/testuser')
+    monkeypatch.setattr(platform_mod, "system", lambda: "Linux")
+    monkeypatch.setattr(os.path, "expanduser", lambda x: "/home/testuser")
 
     # Test home directory replacement
-    path = Path('/home/testuser/.cache/prime-uve/venvs/project_abc123')
+    path = Path("/home/testuser/.cache/prime-uve/venvs/project_abc123")
     result = absolute_to_vscode_path(path)
 
-    assert result == '${userHome}/.cache/prime-uve/venvs/project_abc123'
+    assert result == "${userHome}/.cache/prime-uve/venvs/project_abc123"
 
 
 def test_absolute_to_vscode_path_macos(monkeypatch):
@@ -373,57 +373,53 @@ def test_absolute_to_vscode_path_macos(monkeypatch):
     import platform as platform_mod
     import os
 
-    monkeypatch.setattr(platform_mod, 'system', lambda: 'Darwin')
-    monkeypatch.setattr(os.path, 'expanduser', lambda x: '/Users/testuser')
+    monkeypatch.setattr(platform_mod, "system", lambda: "Darwin")
+    monkeypatch.setattr(os.path, "expanduser", lambda x: "/Users/testuser")
 
     # Test home directory replacement
-    path = Path('/Users/testuser/Library/Caches/prime-uve/venvs/project_abc123')
+    path = Path("/Users/testuser/Library/Caches/prime-uve/venvs/project_abc123")
     result = absolute_to_vscode_path(path)
 
-    assert result == '${userHome}/Library/Caches/prime-uve/venvs/project_abc123'
+    assert result == "${userHome}/Library/Caches/prime-uve/venvs/project_abc123"
 
 
 def test_absolute_to_vscode_path_windows(monkeypatch):
     """Test path translation on Windows."""
     import platform as platform_mod
-    import os
 
-    monkeypatch.setattr(platform_mod, 'system', lambda: 'Windows')
-    monkeypatch.setenv('LOCALAPPDATA', 'C:\\Users\\testuser\\AppData\\Local')
+    monkeypatch.setattr(platform_mod, "system", lambda: "Windows")
+    monkeypatch.setenv("LOCALAPPDATA", "C:\\Users\\testuser\\AppData\\Local")
 
     # Test LOCALAPPDATA replacement
-    path = Path('C:/Users/testuser/AppData/Local/prime-uve/Cache/venvs/project_abc123')
+    path = Path("C:/Users/testuser/AppData/Local/prime-uve/Cache/venvs/project_abc123")
     result = absolute_to_vscode_path(path)
 
-    assert result == '${env:LOCALAPPDATA}/prime-uve/Cache/venvs/project_abc123'
+    assert result == "${env:LOCALAPPDATA}/prime-uve/Cache/venvs/project_abc123"
 
 
 def test_absolute_to_vscode_path_linux_xdg(monkeypatch):
     """Test XDG_CACHE_HOME on Linux."""
     import platform as platform_mod
-    import os
 
-    monkeypatch.setattr(platform_mod, 'system', lambda: 'Linux')
-    monkeypatch.setenv('XDG_CACHE_HOME', '/custom/cache')
+    monkeypatch.setattr(platform_mod, "system", lambda: "Linux")
+    monkeypatch.setenv("XDG_CACHE_HOME", "/custom/cache")
 
     # Test XDG_CACHE_HOME replacement
-    path = Path('/custom/cache/prime-uve/venvs/project_abc123')
+    path = Path("/custom/cache/prime-uve/venvs/project_abc123")
     result = absolute_to_vscode_path(path)
 
-    assert result == '${env:XDG_CACHE_HOME}/prime-uve/venvs/project_abc123'
+    assert result == "${env:XDG_CACHE_HOME}/prime-uve/venvs/project_abc123"
 
 
 def test_absolute_to_vscode_path_fallback():
     """Test fallback to absolute path when no variables match."""
-    import platform as platform_mod
-    import os
 
     # Test with custom path that doesn't match any variables
-    path = Path('/opt/custom/venv/project')
+    path = Path("/opt/custom/venv/project")
     result = absolute_to_vscode_path(path)
 
     # Should return absolute path with forward slashes
-    assert result == '/opt/custom/venv/project'
+    assert result == "/opt/custom/venv/project"
 
 
 # Workspace Filename Tests
