@@ -753,10 +753,10 @@ def test_cache_error_exception():
 
 
 def test_default_cache_path():
-    """Default cache path is in user home directory."""
+    """Default cache path is in platform-appropriate data directory."""
     cache = Cache()
     assert cache._cache_path.is_absolute()
-    assert ".prime-uve" in str(cache._cache_path)
+    assert "prime-uve" in str(cache._cache_path)
     assert "cache.json" in str(cache._cache_path)
 
 
