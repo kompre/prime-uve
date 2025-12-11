@@ -13,56 +13,8 @@ from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import find_env_file, read_env_file, write_env_file
 from prime_uve.core.paths import expand_path_variables, get_venv_base_dir
 from prime_uve.core.project import find_project_root
-
-
-def get_disk_usage(path: Path) -> int:
-    """
-    Calculate total disk usage of a directory in bytes.
-
-    Args:
-        path: Directory path
-
-    Returns:
-        Total size in bytes
-    """
-    total = 0
-    try:
-        for item in path.rglob("*"):
-            if item.is_file():
-                try:
-                    total += item.stat().st_size
-                except (OSError, PermissionError):
-                    pass
-    except (OSError, PermissionError):
-        pass
-    return total
-
-
-def format_bytes(size: int) -> str:
-    """
-    Format bytes to human-readable string.
-
-    Args:
-        size: Size in bytes
-
-    Returns:
-        Formatted string (e.g., "125 MB", "1.5 GB")
-    """
-    if size == 0:
-        return "0 B"
-
-    units = ["B", "KB", "MB", "GB", "TB"]
-    unit_index = 0
-
-    size_float = float(size)
-    while size_float >= 1024 and unit_index < len(units) - 1:
-        size_float /= 1024
-        unit_index += 1
-
-    if unit_index == 0:
-        return f"{int(size_float)} {units[unit_index]}"
-    else:
-        return f"{size_float:.1f} {units[unit_index]}"
+from prime_uve.utils.disk import format_bytes, get_disk_usage
+from prime_uve.utils.venv import find_untracked_venvs
 
 
 def display_venvs_to_remove(
@@ -112,61 +64,6 @@ def display_venvs_to_remove(
                 echo(f"    Size:    {format_bytes(size)}")
 
     echo("")
-
-
-def scan_venv_directory() -> list[Path]:
-    """
-    Scan venv base directory for all venv directories.
-
-    Returns:
-        List of venv directory paths
-    """
-    venv_base = get_venv_base_dir()
-    if not venv_base.exists():
-        return []
-
-    try:
-        return [d for d in venv_base.iterdir() if d.is_dir()]
-    except (OSError, PermissionError):
-        return []
-
-
-def find_untracked_venvs(cache_entries: dict) -> list[dict]:
-    """
-    Find venvs on disk that aren't in cache (treat as orphans).
-
-    Args:
-        cache_entries: Dictionary of cache entries (project_path -> entry)
-
-    Returns:
-        List of untracked venv dictionaries
-    """
-    all_venvs = scan_venv_directory()
-    tracked_venvs = set()
-
-    # Build set of tracked venv paths
-    for cache_entry in cache_entries.values():
-        venv_path_expanded = expand_path_variables(cache_entry["venv_path"])
-        tracked_venvs.add(venv_path_expanded)
-
-    # Find untracked venvs
-    untracked = []
-    for venv_dir in all_venvs:
-        if venv_dir not in tracked_venvs:
-            # Extract project name from directory name (e.g., "test-project_abc123" -> "test-project")
-            dir_name = venv_dir.name
-            project_name = dir_name.rsplit("_", 1)[0] if "_" in dir_name else dir_name
-
-            untracked.append(
-                {
-                    "project_name": f"<unknown: {project_name}>",
-                    "venv_path": None,  # No variable form for untracked
-                    "venv_path_expanded": venv_dir,
-                    "size": get_disk_usage(venv_dir),
-                }
-            )
-
-    return untracked
 
 
 def is_orphaned(project_path: str, cache_entry: dict) -> bool:
@@ -275,13 +172,13 @@ def prune_all(
         )
 
     # 2. Add untracked venvs
-    untracked = find_untracked_venvs(cache_entries)
+    untracked = find_untracked_venvs(cache_entries, calculate_disk_usage=True)
     for u in untracked:
         all_venvs.append(
             {
                 "project_name": u["project_name"],
                 "venv_path_expanded": u["venv_path_expanded"],
-                "disk_usage": u["size"],
+                "disk_usage": u["disk_usage_bytes"],  # Shared utils uses disk_usage_bytes
                 "tracked": False,
             }
         )
@@ -498,16 +395,16 @@ def prune_orphan(
             )
 
     # Find untracked venvs (also treat as orphans)
-    untracked_venvs = find_untracked_venvs(mappings)
+    untracked_venvs = find_untracked_venvs(mappings, calculate_disk_usage=True)
     for untracked in untracked_venvs:
-        total_size += untracked["size"]
+        total_size += untracked["disk_usage_bytes"]  # Shared utils uses disk_usage_bytes
         orphaned_venvs.append(
             {
                 "project_name": untracked["project_name"],
                 "project_path": None,  # No associated project
                 "venv_path": None,  # No cache entry
                 "venv_path_expanded": str(untracked["venv_path_expanded"]),
-                "size": untracked["size"],
+                "size": untracked["disk_usage_bytes"],  # Shared utils uses disk_usage_bytes
                 "is_tracked": False,  # Mark as untracked
             }
         )

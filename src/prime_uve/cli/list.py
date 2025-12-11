@@ -11,7 +11,9 @@ from prime_uve.cli.output import echo, error, info, print_json, _SYMBOLS
 from prime_uve.cli.register import auto_register_current_project
 from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import read_env_file
-from prime_uve.core.paths import expand_path_variables, get_venv_base_dir
+from prime_uve.core.paths import expand_path_variables
+from prime_uve.utils.disk import format_bytes, get_disk_usage
+from prime_uve.utils.venv import find_untracked_venvs, scan_venv_directory
 
 
 @dataclass
@@ -29,7 +31,9 @@ class ValidationResult:
     disk_usage_bytes: int
 
 
-def validate_project_mapping(project_path: str, cache_entry: dict) -> ValidationResult:
+def validate_project_mapping(
+    project_path: str, cache_entry: dict, calculate_disk_usage: bool = False
+) -> ValidationResult:
     """
     Validate a project mapping.
 
@@ -40,6 +44,7 @@ def validate_project_mapping(project_path: str, cache_entry: dict) -> Validation
     Args:
         project_path: Absolute path to project directory
         cache_entry: Cache entry with venv_path, project_name, etc.
+        calculate_disk_usage: If True, calculate disk usage (slower). Default False.
 
     Returns:
         ValidationResult with validation status
@@ -61,9 +66,9 @@ def validate_project_mapping(project_path: str, cache_entry: dict) -> Validation
     except Exception:
         pass  # Any error → not valid
 
-    # Get disk usage if venv exists
+    # Get disk usage if requested and venv exists
     disk_usage = 0
-    if venv_path_expanded.exists():
+    if calculate_disk_usage and venv_path_expanded.exists():
         try:
             disk_usage = get_disk_usage(venv_path_expanded)
         except Exception:
@@ -80,115 +85,6 @@ def validate_project_mapping(project_path: str, cache_entry: dict) -> Validation
         env_venv_path=env_venv_path,
         disk_usage_bytes=disk_usage,
     )
-
-
-def scan_venv_directory() -> list[Path]:
-    """
-    Scan venv base directory for all venv directories.
-
-    Returns:
-        List of venv directory paths
-    """
-    venv_base = get_venv_base_dir()
-    if not venv_base.exists():
-        return []
-
-    try:
-        return [d for d in venv_base.iterdir() if d.is_dir()]
-    except (OSError, PermissionError):
-        return []
-
-
-def find_untracked_venvs(cache_entries: dict) -> list[dict]:
-    """
-    Find venvs on disk that aren't in cache (treat as orphans).
-
-    Args:
-        cache_entries: Dictionary of cache entries (project_path -> entry)
-
-    Returns:
-        List of untracked venv dictionaries
-    """
-    all_venvs = scan_venv_directory()
-    tracked_venvs = set()
-
-    # Build set of tracked venv paths
-    for cache_entry in cache_entries.values():
-        venv_path_expanded = expand_path_variables(cache_entry["venv_path"])
-        tracked_venvs.add(venv_path_expanded)
-
-    # Find untracked venvs
-    untracked = []
-    for venv_dir in all_venvs:
-        if venv_dir not in tracked_venvs:
-            # Extract project name from directory name (e.g., "test-project_abc123" -> "test-project")
-            dir_name = venv_dir.name
-            project_name = dir_name.rsplit("_", 1)[0] if "_" in dir_name else dir_name
-
-            untracked.append(
-                {
-                    "project_name": f"<unknown: {project_name}>",
-                    "venv_path": None,  # No variable form for untracked
-                    "venv_path_expanded": venv_dir,
-                    "hash": None,  # No hash for untracked
-                    "created_at": None,  # No creation time for untracked
-                    "is_valid": False,  # Treat as orphan
-                    "env_venv_path": None,
-                    "disk_usage_bytes": get_disk_usage(venv_dir),
-                }
-            )
-
-    return untracked
-
-
-def get_disk_usage(path: Path) -> int:
-    """
-    Calculate total disk usage of a directory in bytes.
-
-    Args:
-        path: Directory path
-
-    Returns:
-        Total size in bytes
-    """
-    total = 0
-    try:
-        for item in path.rglob("*"):
-            if item.is_file():
-                try:
-                    total += item.stat().st_size
-                except (OSError, PermissionError):
-                    pass
-    except (OSError, PermissionError):
-        pass
-    return total
-
-
-def format_bytes(size: int) -> str:
-    """
-    Format bytes to human-readable string.
-
-    Args:
-        size: Size in bytes
-
-    Returns:
-        Formatted string (e.g., "125 MB", "1.5 GB")
-    """
-    if size == 0:
-        return "0 B"
-
-    units = ["B", "KB", "MB", "GB", "TB"]
-    unit_index = 0
-
-    size_float = float(size)
-    while size_float >= 1024 and unit_index < len(units) - 1:
-        size_float /= 1024
-        unit_index += 1
-
-    if unit_index == 0:
-        return f"{int(size_float)} {units[unit_index]}"
-    else:
-        return f"{size_float:.1f} {units[unit_index]}"
 
 
 def supports_hyperlinks() -> bool:
@@ -595,13 +491,18 @@ def list_command(
         sys.exit(1)
 
     # 2. Validate all cached mappings
+    # Only calculate disk usage when it will be displayed (verbose or JSON mode)
+    calculate_sizes = verbose or json_output
+
     results = []
     for project_path, cache_entry in mappings.items():
-        result = validate_project_mapping(project_path, cache_entry)
+        result = validate_project_mapping(
+            project_path, cache_entry, calculate_disk_usage=calculate_sizes
+        )
         results.append(result)
 
     # 3. Find and add untracked venvs as orphans
-    untracked_venvs = find_untracked_venvs(mappings)
+    untracked_venvs = find_untracked_venvs(mappings, calculate_disk_usage=calculate_sizes)
     results.extend(untracked_venvs)
 
     # If no venvs at all (cached or untracked)
