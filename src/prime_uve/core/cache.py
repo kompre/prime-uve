@@ -13,7 +13,7 @@ from typing import Literal
 
 from filelock import FileLock, Timeout
 
-from .paths import expand_path_variables
+from .paths import expand_path_variables, get_data_path
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +64,14 @@ class Cache:
 
     @staticmethod
     def _default_cache_path() -> Path:
-        """Get default cache path (~/.prime-uve/cache.json)."""
-        home = Path.home()
-        return home / ".prime-uve" / "cache.json"
+        """Get default cache path using platform-appropriate data directory.
+
+        Uses platform-specific data directories:
+        - Linux: ~/.local/share/prime-uve/cache.json
+        - macOS: ~/Library/Application Support/prime-uve/cache.json
+        - Windows: %LOCALAPPDATA%/prime-uve/Data/cache.json
+        """
+        return get_data_path() / "cache.json"
 
     def _load(self) -> dict:
         """Load cache with lock held.

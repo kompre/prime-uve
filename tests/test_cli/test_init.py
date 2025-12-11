@@ -56,7 +56,7 @@ def test_init_creates_env_file(runner, mock_project, cache_file, monkeypatch):
 
         content = env_file.read_text()
         assert "UV_PROJECT_ENVIRONMENT=" in content
-        assert "${HOME}/.prime-uve/venvs/" in content
+        assert "${PRIMEUVE_VENVS_PATH}/" in content
         assert "test-project" in content or "test_project" in content
 
 
@@ -93,9 +93,9 @@ def test_init_uses_variable_form_in_env_file(
         env_file = mock_project / ".env.uve"
         content = env_file.read_text()
 
-        # Should contain ${HOME}, not expanded path
-        assert "${HOME}" in content
-        # Should NOT contain actual home directory path
+        # Should contain ${PRIMEUVE_VENVS_PATH}, not expanded path
+        assert "${PRIMEUVE_VENVS_PATH}" in content
+        # Should NOT contain actual paths
         import os
 
         home = os.path.expanduser("~")
