@@ -34,6 +34,51 @@ def find_workspace_files(project_root: Path) -> list[Path]:
     return sorted(workspace_files)
 
 
+def find_default_workspace(project_root: Path, workspace_files: list[Path]) -> Path | None:
+    """Find the default workspace file to use for merging.
+
+    Priority order:
+    1. Workspace files without platform suffixes (not ending in .linux, .macos, .windows, etc.)
+    2. Among those, prefer one matching the project name
+    3. If multiple remain, take alphabetically first
+    4. If all have platform suffixes, take alphabetically first
+
+    Args:
+        project_root: Path to project root
+        workspace_files: List of available workspace files
+
+    Returns:
+        Path to default workspace file, or None if no files exist
+    """
+    if not workspace_files:
+        return None
+
+    PLATFORM_SUFFIXES = ['linux', 'macos', 'windows', 'darwin', 'win32']
+
+    # Filter out files with platform suffixes
+    non_platform_files = []
+    for wf in workspace_files:
+        # Get the stem and check if it ends with a platform suffix
+        stem = wf.stem  # e.g., "project.linux" -> "project.linux"
+        parts = stem.split('.')
+        if len(parts) > 1 and parts[-1] in PLATFORM_SUFFIXES:
+            continue  # Skip platform-suffixed files
+        non_platform_files.append(wf)
+
+    # If we have non-platform files, prefer those
+    candidates = non_platform_files if non_platform_files else workspace_files
+
+    # Among candidates, prefer one matching project name
+    project_name = project_root.name
+    preferred_name = f"{project_name}.code-workspace"
+    for candidate in candidates:
+        if candidate.name == preferred_name:
+            return candidate
+
+    # Otherwise, return alphabetically first
+    return sorted(candidates)[0]
+
+
 def strip_json_comments(content: str) -> str:
     """Remove // and /* */ comments from JSON string.
 
@@ -136,6 +181,29 @@ def write_workspace(path: Path, data: dict) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
         f.write("\n")  # Trailing newline
+
+
+def deep_merge_dicts(base: dict, overlay: dict) -> dict:
+    """Deep merge two dictionaries, with overlay taking precedence.
+
+    Args:
+        base: Base dictionary
+        overlay: Dictionary to merge on top (takes precedence)
+
+    Returns:
+        Merged dictionary
+    """
+    result = base.copy()
+
+    for key, value in overlay.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            # Recursively merge nested dicts
+            result[key] = deep_merge_dicts(result[key], value)
+        else:
+            # Overlay value takes precedence
+            result[key] = value
+
+    return result
 
 
 def update_workspace_settings(workspace: dict, interpreter_path: str | Path) -> dict:

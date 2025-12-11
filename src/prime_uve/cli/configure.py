@@ -12,6 +12,8 @@ from prime_uve.core.project import find_project_root
 from prime_uve.utils.vscode import (
     absolute_to_vscode_path,
     create_default_workspace,
+    deep_merge_dicts,
+    find_default_workspace,
     find_workspace_files,
     get_platform_suffix,
     get_workspace_filename,
@@ -109,6 +111,7 @@ def configure_vscode_command(
     workspace_path: str | None,
     create: bool,
     suffix: str | None,
+    merge: str | None,
     expand: bool,
     verbose: bool,
     yes: bool,
@@ -122,6 +125,7 @@ def configure_vscode_command(
         workspace_path: Specific workspace file to update
         create: Force creation of new workspace
         suffix: Create platform-specific workspace file with suffix (None or "__auto__" for OS name)
+        merge: Merge settings from another workspace (None, "__default__" for default, or path)
         expand: Use fully expanded absolute paths instead of VS Code variables
         verbose: Show detailed output
         yes: Skip confirmations
@@ -132,6 +136,14 @@ def configure_vscode_command(
         ValueError: If project not initialized or venv not found
         click.Abort: If user cancels operation
     """
+    # Validate --merge requires --suffix
+    if merge is not None and suffix is None:
+        raise ValueError(
+            "--merge option requires --suffix\n"
+            "The merge option is only meaningful when creating platform-specific workspace files.\n\n"
+            "Usage: prime-uve configure vscode --suffix --merge [FILE]"
+        )
+
     # Resolve suffix if __auto__
     if suffix == "__auto__":
         suffix = get_platform_suffix()
@@ -227,7 +239,13 @@ def configure_vscode_command(
             else:
                 # Suffixed file doesn't exist - create it
                 workspace_created = True
-                if existing_workspace and existing_workspace.exists():
+                if merge is not None:
+                    # When merging, start with minimal workspace
+                    # (merge will add settings from source file)
+                    workspace_data = create_default_workspace(
+                        project_root, interpreter_path
+                    )
+                elif existing_workspace and existing_workspace.exists():
                     # Copy settings from existing workspace
                     workspace_data = read_workspace(existing_workspace)
                 else:
@@ -252,6 +270,43 @@ def configure_vscode_command(
                 action = "Creating" if workspace_created else "Updating"
                 info(f"{action} workspace: {workspace_file}")
                 info(f"Interpreter: {interpreter_path}")
+
+            # Handle merge if requested
+            if merge is not None:
+                # Resolve merge source
+                if merge == "__default__":
+                    merge_source = find_default_workspace(project_root, workspace_files)
+                    if merge_source is None:
+                        raise ValueError(
+                            "No default workspace found to merge from\n"
+                            "Cannot determine which workspace to merge.\n\n"
+                            "Specify a workspace file explicitly with --merge <file>"
+                        )
+                else:
+                    # User specified a file
+                    merge_source = Path(merge)
+                    if not merge_source.is_absolute():
+                        merge_source = project_root / merge_source
+
+                if not merge_source.exists():
+                    raise ValueError(
+                        f"Merge source not found: {merge_source}\n\n"
+                        f"Ensure the workspace file exists before merging."
+                    )
+
+                # Don't merge from the same file
+                if merge_source.resolve() == workspace_file.resolve():
+                    raise ValueError(
+                        f"Cannot merge workspace into itself\n"
+                        f"Merge source and target are the same file: {workspace_file.name}"
+                    )
+
+                # Read and merge (merge_data takes precedence over existing workspace_data)
+                merge_data = read_workspace(merge_source)
+                workspace_data = deep_merge_dicts(workspace_data, merge_data)
+
+                if verbose:
+                    info(f"Merged settings from: {merge_source.name}")
 
             # Update interpreter path in the workspace data
             workspace_data = update_workspace_settings(workspace_data, interpreter_path)

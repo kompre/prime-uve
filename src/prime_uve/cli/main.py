@@ -269,6 +269,12 @@ def configure():
     help="Create platform-specific workspace with suffix (uses OS name if no value given)",
 )
 @click.option(
+    "--merge",
+    is_flag=False,
+    flag_value="__default__",
+    help="Merge settings from another workspace file (requires --suffix; uses default workspace if no value given)",
+)
+@click.option(
     "--expand",
     is_flag=True,
     default=False,
@@ -282,6 +288,7 @@ def vscode(
     workspace: Optional[str],
     create: bool,
     suffix: Optional[str],
+    merge: Optional[str],
     expand: bool,
     verbose: bool,
     yes: bool,
@@ -304,6 +311,10 @@ def vscode(
 
         prime-uve configure vscode --suffix dev       # Create workspace with custom suffix
 
+        prime-uve configure vscode --suffix --merge   # Create platform-specific workspace, merge from default workspace
+
+        prime-uve configure vscode --suffix --merge joe.code-workspace  # Merge settings from joe.code-workspace
+
         prime-uve configure vscode --expand           # Use absolute paths instead of variables
 
         prime-uve configure vscode --workspace myproject.code-workspace
@@ -313,7 +324,7 @@ def vscode(
     from prime_uve.cli.configure import configure_vscode_command
 
     configure_vscode_command(
-        ctx, workspace, create, suffix, expand, verbose, yes, dry_run, json_output
+        ctx, workspace, create, suffix, merge, expand, verbose, yes, dry_run, json_output
     )
 
 
