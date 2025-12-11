@@ -22,7 +22,7 @@
       "Bash(gh pr edit:*)",
       "Bash(gh run list:*)",
       "WebSearch",
-      "Bash(git cherry-pick:*)"
+      "Bash(git cherry-pick:*)",
     ],
     "deny": [],
     "ask": []
