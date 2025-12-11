@@ -266,7 +266,6 @@ def configure():
     "--suffix",
     is_flag=False,
     flag_value="__auto__",
-    default=None,
     help="Create platform-specific workspace with suffix (uses OS name if no value given)",
 )
 @click.option(
