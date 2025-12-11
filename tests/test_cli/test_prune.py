@@ -32,8 +32,10 @@ def mock_venv_base_dir_global(tmp_path):
     test_venv_dir.mkdir(parents=True, exist_ok=True)
 
     # Patch get_venv_base_dir in all locations where it's used
-    with patch("prime_uve.cli.prune.get_venv_base_dir", return_value=test_venv_dir), \
-         patch("prime_uve.utils.venv.get_venv_base_dir", return_value=test_venv_dir):
+    with (
+        patch("prime_uve.cli.prune.get_venv_base_dir", return_value=test_venv_dir),
+        patch("prime_uve.utils.venv.get_venv_base_dir", return_value=test_venv_dir),
+    ):
         yield test_venv_dir
 
 
