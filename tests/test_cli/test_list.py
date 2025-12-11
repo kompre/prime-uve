@@ -1,7 +1,7 @@
 """Tests for the list command."""
 
 import json
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -20,6 +20,20 @@ from prime_uve.cli.output import _SYMBOLS
 def runner():
     """Click CLI test runner."""
     return CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def mock_venv_base_dir_global(tmp_path):
+    """Automatically mock get_venv_base_dir to use temp directory for all tests.
+
+    This prevents tests from accidentally accessing or deleting real venvs.
+    """
+    test_venv_dir = tmp_path / ".prime-uve" / "venvs"
+    test_venv_dir.mkdir(parents=True, exist_ok=True)
+
+    # Patch get_venv_base_dir in all locations where it's used
+    with patch("prime_uve.utils.venv.get_venv_base_dir", return_value=test_venv_dir):
+        yield test_venv_dir
 
 
 @pytest.fixture
