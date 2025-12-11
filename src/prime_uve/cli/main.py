@@ -262,6 +262,19 @@ def configure():
     "--workspace", type=click.Path(), help="Specific workspace file to update"
 )
 @click.option("--create", is_flag=True, help="Create new workspace file")
+@click.option(
+    "--suffix",
+    is_flag=False,
+    flag_value="__auto__",
+    default=None,
+    help="Create platform-specific workspace with suffix (uses OS name if no value given)"
+)
+@click.option(
+    "--expand",
+    is_flag=True,
+    default=False,
+    help="Use fully expanded absolute paths instead of VS Code variables"
+)
 @common_options
 @handle_errors
 @click.pass_context
@@ -269,6 +282,8 @@ def vscode(
     ctx,
     workspace: Optional[str],
     create: bool,
+    suffix: Optional[str],
+    expand: bool,
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -286,13 +301,19 @@ def vscode(
 
         prime-uve configure vscode                    # Update or create workspace
 
+        prime-uve configure vscode --suffix           # Create platform-specific workspace (e.g., project.linux.code-workspace)
+
+        prime-uve configure vscode --suffix dev       # Create workspace with custom suffix
+
+        prime-uve configure vscode --expand           # Use absolute paths instead of variables
+
         prime-uve configure vscode --workspace myproject.code-workspace
 
         prime-uve configure vscode --dry-run          # Preview changes
     """
     from prime_uve.cli.configure import configure_vscode_command
 
-    configure_vscode_command(ctx, workspace, create, verbose, yes, dry_run, json_output)
+    configure_vscode_command(ctx, workspace, create, suffix, expand, verbose, yes, dry_run, json_output)
 
 
 def main():

@@ -10,8 +10,11 @@ from prime_uve.core.env_file import read_env_file
 from prime_uve.core.paths import expand_path_variables
 from prime_uve.core.project import find_project_root
 from prime_uve.utils.vscode import (
+    absolute_to_vscode_path,
     create_default_workspace,
     find_workspace_files,
+    get_platform_suffix,
+    get_workspace_filename,
     read_workspace,
     update_workspace_settings,
     write_workspace,
@@ -105,6 +108,8 @@ def configure_vscode_command(
     ctx: click.Context,
     workspace_path: str | None,
     create: bool,
+    suffix: str | None,
+    expand: bool,
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -116,6 +121,8 @@ def configure_vscode_command(
         ctx: Click context
         workspace_path: Specific workspace file to update
         create: Force creation of new workspace
+        suffix: Create platform-specific workspace file with suffix (None or "__auto__" for OS name)
+        expand: Use fully expanded absolute paths instead of VS Code variables
         verbose: Show detailed output
         yes: Skip confirmations
         dry_run: Show what would be done
@@ -125,6 +132,9 @@ def configure_vscode_command(
         ValueError: If project not initialized or venv not found
         click.Abort: If user cancels operation
     """
+    # Resolve suffix if __auto__
+    if suffix == "__auto__":
+        suffix = get_platform_suffix()
     # 1. Find project root
     project_root = find_project_root()
     if not project_root:
@@ -171,8 +181,13 @@ def configure_vscode_command(
             f"Run 'prime-uve init --force' to recreate."
         )
 
-    # Use variable form for workspace file (cross-platform compatibility)
-    interpreter_path = _get_interpreter_path_variable_form(venv_path_var)
+    # Determine interpreter path format based on --expand flag
+    if expand:
+        # Use fully expanded absolute path
+        interpreter_path = str(interpreter_path_expanded).replace('\\', '/')
+    else:
+        # Use VS Code variables for cross-platform compatibility
+        interpreter_path = absolute_to_vscode_path(interpreter_path_expanded)
 
     # 4. Find or create workspace file
     workspace_file: Path | None = None
@@ -186,11 +201,30 @@ def configure_vscode_command(
 
         if not workspace_file.exists() and not create:
             raise ValueError(f"Workspace file not found: {workspace_file}")
+
+        # If suffix provided, create suffixed version based on specified file
+        if suffix:
+            workspace_file = get_workspace_filename(project_root, suffix, workspace_file)
     else:
         # Auto-discover workspace files
         workspace_files = find_workspace_files(project_root)
 
-        if not workspace_files:
+        if suffix:
+            # When suffix is provided, we want to create a new suffixed file
+            # Use the first existing workspace as a base, or project name if none exist
+            existing_workspace = workspace_files[0] if workspace_files else None
+            workspace_file = get_workspace_filename(project_root, suffix, existing_workspace)
+
+            # If the suffixed file doesn't exist, we'll create it
+            if not workspace_file.exists():
+                workspace_created = True
+                if existing_workspace and existing_workspace.exists():
+                    # Copy settings from existing workspace
+                    workspace_data = read_workspace(existing_workspace)
+                else:
+                    # Create new workspace
+                    workspace_data = create_default_workspace(project_root, interpreter_path)
+        elif not workspace_files:
             # No workspace files found
             if not create and not confirm(
                 "No workspace file found. Create one?", default=True, yes_flag=yes
@@ -198,9 +232,48 @@ def configure_vscode_command(
                 raise click.Abort()
 
             # Create new workspace
-            workspace_file = project_root / f"{project_root.name}.code-workspace"
+            workspace_file = get_workspace_filename(project_root, None, None)
             workspace_data = create_default_workspace(project_root, interpreter_path)
 
+        # Handle suffix workspace creation (if we created one above)
+        if suffix and workspace_created:
+            if verbose:
+                info(f"Creating workspace: {workspace_file}")
+                info(f"Interpreter: {interpreter_path}")
+
+            # Update interpreter path in the workspace data
+            workspace_data = update_workspace_settings(workspace_data, interpreter_path)
+
+            if not dry_run:
+                write_workspace(workspace_file, workspace_data)
+                success("VS Code workspace configured")
+                echo(f"\nWorkspace: {workspace_file.name}")
+                echo("\nSettings applied:")
+                echo(f"  ✓ Python interpreter: {interpreter_path}")
+                echo("\nNext steps:")
+                echo("  1. Open workspace in VS Code:")
+                echo(f"     code {workspace_file.name}")
+                echo("\n  2. Reload window if already open:")
+                echo('     Ctrl+Shift+P → "Developer: Reload Window"')
+            else:
+                echo(f"[DRY RUN] Would create: {workspace_file}")
+                echo(f"[DRY RUN] Interpreter: {interpreter_path}")
+
+            if json_output:
+                print_json(
+                    {
+                        "workspace_file": str(workspace_file),
+                        "created": True,
+                        "updated": False,
+                        "interpreter_path": str(interpreter_path),
+                        "previous_interpreter": None,
+                    }
+                )
+
+            return
+
+        elif not workspace_files and not suffix:
+            # Original logic for creating workspace without suffix
             if verbose:
                 info(f"Creating workspace: {workspace_file}")
                 info(f"Interpreter: {interpreter_path}")
@@ -239,7 +312,7 @@ def configure_vscode_command(
 
             return
 
-        elif len(workspace_files) > 1:
+        elif len(workspace_files) > 1 and not suffix:
             # Multiple files - prompt user
             workspace_file = _prompt_workspace_choice(workspace_files, project_root)
             if workspace_file is None:

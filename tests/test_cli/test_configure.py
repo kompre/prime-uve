@@ -521,12 +521,8 @@ def test_configure_vscode_uses_environment_variables(
     data = json.loads(workspace.read_text())
     interpreter_path = data["settings"]["python.defaultInterpreterPath"]
 
-    # Should contain ${HOME} variable, not the expanded path
-    assert (
-        "${env:HOME}" in interpreter_path
-        or "$HOME" in interpreter_path
-        or "${env:USERPROFILE}" in interpreter_path
-    )
+    # Should contain VS Code variables (${userHome}), not the expanded absolute path
+    assert "${userHome}" in interpreter_path, f"Expected ${{userHome}} in path, got: {interpreter_path}"
     assert "custom/venvs/test_venv" in interpreter_path
 
     # Should NOT contain the expanded tmp_path

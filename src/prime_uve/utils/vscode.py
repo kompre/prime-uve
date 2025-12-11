@@ -1,6 +1,8 @@
 """VS Code workspace utilities for venv configuration."""
 
 import json
+import os
+import platform
 from pathlib import Path
 
 
@@ -176,6 +178,133 @@ def create_default_workspace(project_root: Path, interpreter_path: str | Path) -
             "python.defaultInterpreterPath": str(interpreter_path),
         },
     }
+
+
+def get_platform_suffix() -> str:
+    """Get user-friendly platform name for workspace suffix.
+
+    Maps Python's platform.system() to user-friendly names:
+    - Linux → linux
+    - Darwin → macos
+    - Windows → windows
+
+    Returns:
+        User-friendly platform name (lowercase)
+    """
+    PLATFORM_SUFFIX_MAP = {
+        'Linux': 'linux',
+        'Darwin': 'macos',
+        'Windows': 'windows',
+    }
+
+    return PLATFORM_SUFFIX_MAP.get(platform.system(), platform.system().lower())
+
+
+def absolute_to_vscode_path(absolute_path: Path) -> str:
+    """Convert absolute path to VS Code variable syntax.
+
+    Translates platform-specific paths to VS Code's variable format:
+    - Linux: /home/user → ${userHome}
+    - macOS: /Users/user → ${userHome}
+    - Windows: C:/Users/user/AppData/Local → ${env:LOCALAPPDATA}
+
+    If path cannot be converted to variables (e.g., custom location),
+    falls back to absolute path with forward slashes.
+
+    Args:
+        absolute_path: Absolute path to convert
+
+    Returns:
+        Path with VS Code variables (or absolute path as fallback)
+    """
+    path_str = str(absolute_path)
+    system = platform.system()
+
+    # Convert to forward slashes for consistency
+    path_str = path_str.replace('\\', '/')
+
+    if system == "Linux":
+        # Try to replace home directory
+        home = os.path.expanduser('~').replace('\\', '/')
+        if path_str.startswith(home):
+            return path_str.replace(home, '${userHome}', 1)
+
+        # Check for XDG_CACHE_HOME
+        xdg_cache = os.environ.get('XDG_CACHE_HOME')
+        if xdg_cache:
+            xdg_cache = xdg_cache.replace('\\', '/')
+            if path_str.startswith(xdg_cache):
+                return path_str.replace(xdg_cache, '${env:XDG_CACHE_HOME}', 1)
+
+    elif system == "Darwin":  # macOS
+        # Replace home directory
+        home = os.path.expanduser('~').replace('\\', '/')
+        if path_str.startswith(home):
+            return path_str.replace(home, '${userHome}', 1)
+
+    elif system == "Windows":
+        # Try LOCALAPPDATA first
+        localappdata = os.environ.get('LOCALAPPDATA')
+        if localappdata:
+            localappdata = localappdata.replace('\\', '/')
+            if path_str.startswith(localappdata):
+                return path_str.replace(localappdata, '${env:LOCALAPPDATA}', 1)
+
+        # Fallback to USERPROFILE
+        userprofile = os.environ.get('USERPROFILE')
+        if userprofile:
+            userprofile = userprofile.replace('\\', '/')
+            if path_str.startswith(userprofile):
+                return path_str.replace(userprofile, '${userHome}', 1)
+
+    # Fallback: return absolute path with forward slashes
+    return path_str
+
+
+def get_workspace_filename(
+    project_root: Path,
+    suffix: str | None = None,
+    existing_workspace: Path | None = None
+) -> Path:
+    """Generate workspace filename with optional suffix.
+
+    Args:
+        project_root: Project root directory
+        suffix: Optional suffix to insert before .code-workspace
+        existing_workspace: Existing workspace file to base name on
+
+    Returns:
+        Path to workspace file
+
+    Examples:
+        >>> get_workspace_filename(Path('/proj'), None)
+        Path('/proj/proj.code-workspace')
+
+        >>> get_workspace_filename(Path('/proj'), 'linux')
+        Path('/proj/proj.linux.code-workspace')
+
+        >>> get_workspace_filename(Path('/proj'), 'dev', Path('/proj/foo.code-workspace'))
+        Path('/proj/foo.dev.code-workspace')
+    """
+    if existing_workspace:
+        # Extract base name without suffix
+        name = existing_workspace.stem
+        # Remove existing platform suffixes if any
+        for platform_suffix in ['linux', 'macos', 'windows', 'darwin', 'win32']:
+            if name.endswith(f'.{platform_suffix}'):
+                name = name[:-len(platform_suffix)-1]
+                break
+    else:
+        # Use project name
+        name = project_root.name
+
+    # Build filename
+    if suffix:
+        filename = f"{name}.{suffix}.code-workspace"
+    else:
+        filename = f"{name}.code-workspace"
+
+    return project_root / filename
 
 
 def escape_env_variables(path: str) -> str:
