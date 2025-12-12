@@ -24,7 +24,8 @@
       "WebSearch",
       "Bash(git cherry-pick:*)",
       "Bash(prime-uve configure:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(prime-uve:*)"
     ],
     "deny": [],
     "ask": []

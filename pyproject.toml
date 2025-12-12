@@ -1,6 +1,6 @@
 [project]
 name = "prime-uve"
-version = "0.2.0rc12"
+version = "0.2.0rc14"
 description = "A thin wrapper for uv with external venv management"
 readme = "README.md"
 license = { text = "MIT" }
