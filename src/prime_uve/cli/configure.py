@@ -279,7 +279,7 @@ def configure_vscode_command(
 
         # Handle suffix workspace (both create and update)
         if suffix:
-            if verbose:
+            if verbose and not json_output:
                 action = "Creating" if workspace_created else "Updating"
                 info(f"{action} workspace: {workspace_file}")
                 info(f"Interpreter: {interpreter_path}")
@@ -293,7 +293,7 @@ def configure_vscode_command(
                         merge_source = Path(default_workspace)
                         if not merge_source.is_absolute():
                             merge_source = project_root / merge_source
-                        if verbose:
+                        if verbose and not json_output:
                             info(
                                 f"Using default workspace from .env.uve: {merge_source.name}"
                             )
@@ -331,7 +331,7 @@ def configure_vscode_command(
                 merge_data = read_workspace(merge_source)
                 workspace_data = deep_merge_dicts(workspace_data, merge_data)
 
-                if verbose:
+                if verbose and not json_output:
                     info(f"Merged settings from: {merge_source.name}")
 
             # Handle export-as-default
@@ -371,7 +371,7 @@ def configure_vscode_command(
                     update_env_file(
                         env_file, {"PRIMEUVE_DEFAULT_CW": workspace_to_save}
                     )
-                    if verbose:
+                    if verbose and not json_output:
                         info(f"Set default workspace in .env.uve: {workspace_to_save}")
                 else:
                     echo(
@@ -383,23 +383,25 @@ def configure_vscode_command(
 
             if not dry_run:
                 write_workspace(workspace_file, workspace_data)
-                success("VS Code workspace configured")
-                echo(f"\nWorkspace: {workspace_file.name}")
-                echo("\nSettings applied:")
-                echo(f"  ✓ Python interpreter: {interpreter_path}")
-                if export_as_default is not None:
-                    echo("  ✓ Default workspace saved to .env.uve")
-                echo("\nNext steps:")
-                echo("  1. Open workspace in VS Code:")
-                echo(f"     code {workspace_file.name}")
-                echo("\n  2. Reload window if already open:")
-                echo('     Ctrl+Shift+P → "Developer: Reload Window"')
+                if not json_output:
+                    success("VS Code workspace configured")
+                    echo(f"\nWorkspace: {workspace_file.name}")
+                    echo("\nSettings applied:")
+                    echo(f"  ✓ Python interpreter: {interpreter_path}")
+                    if export_as_default is not None:
+                        echo("  ✓ Default workspace saved to .env.uve")
+                    echo("\nNext steps:")
+                    echo("  1. Open workspace in VS Code:")
+                    echo(f"     code {workspace_file.name}")
+                    echo("\n  2. Reload window if already open:")
+                    echo('     Ctrl+Shift+P → "Developer: Reload Window"')
             else:
-                action = "create" if workspace_created else "update"
-                echo(f"[DRY RUN] Would {action}: {workspace_file}")
-                echo(f"[DRY RUN] Interpreter: {interpreter_path}")
-                if export_as_default is not None:
-                    echo("[DRY RUN] Would set default workspace in .env.uve")
+                if not json_output:
+                    action = "create" if workspace_created else "update"
+                    echo(f"[DRY RUN] Would {action}: {workspace_file}")
+                    echo(f"[DRY RUN] Interpreter: {interpreter_path}")
+                    if export_as_default is not None:
+                        echo("[DRY RUN] Would set default workspace in .env.uve")
 
             if json_output:
                 print_json(
@@ -416,28 +418,30 @@ def configure_vscode_command(
 
         elif not workspace_files and not suffix:
             # Original logic for creating workspace without suffix
-            if verbose:
+            if verbose and not json_output:
                 info(f"Creating workspace: {workspace_file}")
                 info(f"Interpreter: {interpreter_path}")
 
             if not dry_run:
                 write_workspace(workspace_file, workspace_data)
-                success("VS Code workspace configured")
-                echo(f"\nWorkspace: {workspace_file.name}")
-                echo("\nSettings applied:")
-                echo(f"  ✓ Python interpreter: {interpreter_path}")
-                echo("\nNext steps:")
-                echo("  1. Open workspace in VS Code:")
-                echo(f"     code {workspace_file.name}")
-                echo("\n  2. Reload window if already open:")
-                echo('     Ctrl+Shift+P → "Developer: Reload Window"')
-                echo("\n  3. Open new terminal (Ctrl+`):")
-                echo(f"     Should show: ({project_root.name}) in prompt")
-                echo("\n  4. If interpreter not detected:")
-                echo('     Ctrl+Shift+P → "Python: Select Interpreter"')
+                if not json_output:
+                    success("VS Code workspace configured")
+                    echo(f"\nWorkspace: {workspace_file.name}")
+                    echo("\nSettings applied:")
+                    echo(f"  ✓ Python interpreter: {interpreter_path}")
+                    echo("\nNext steps:")
+                    echo("  1. Open workspace in VS Code:")
+                    echo(f"     code {workspace_file.name}")
+                    echo("\n  2. Reload window if already open:")
+                    echo('     Ctrl+Shift+P → "Developer: Reload Window"')
+                    echo("\n  3. Open new terminal (Ctrl+`):")
+                    echo(f"     Should show: ({project_root.name}) in prompt")
+                    echo("\n  4. If interpreter not detected:")
+                    echo('     Ctrl+Shift+P → "Python: Select Interpreter"')
             else:
-                echo(f"[DRY RUN] Would create: {workspace_file}")
-                echo(f"[DRY RUN] Interpreter: {interpreter_path}")
+                if not json_output:
+                    echo(f"[DRY RUN] Would create: {workspace_file}")
+                    echo(f"[DRY RUN] Interpreter: {interpreter_path}")
 
             workspace_created = True
 
@@ -464,7 +468,7 @@ def configure_vscode_command(
             workspace_file = workspace_files[0]
 
     # 5. Update workspace file
-    if verbose:
+    if verbose and not json_output:
         info(f"Workspace: {workspace_file}")
         info(f"Interpreter: {interpreter_path}")
 
@@ -530,7 +534,7 @@ def configure_vscode_command(
         # Write to .env.uve
         if not dry_run:
             update_env_file(env_file, {"PRIMEUVE_DEFAULT_CW": workspace_to_save})
-            if verbose:
+            if verbose and not json_output:
                 info(f"Set default workspace in .env.uve: {workspace_to_save}")
         else:
             echo(
@@ -539,32 +543,34 @@ def configure_vscode_command(
 
     # Write changes
     if dry_run:
-        echo(f"[DRY RUN] Would update workspace: {workspace_file.name}")
-        echo("\n[DRY RUN] Changes:")
-        echo("  settings.python.defaultInterpreterPath:")
-        echo(f"    Old: {current_interpreter or '(not set)'}")
-        echo(f"    New: {interpreter_path}")
-        echo("  settings.python.terminal.activateEnvironment: true")
-        echo('  settings.python.envFile: "${workspaceFolder}/.env.uve"')
-        if export_as_default is not None:
-            echo("\n[DRY RUN] Would set default workspace in .env.uve")
+        if not json_output:
+            echo(f"[DRY RUN] Would update workspace: {workspace_file.name}")
+            echo("\n[DRY RUN] Changes:")
+            echo("  settings.python.defaultInterpreterPath:")
+            echo(f"    Old: {current_interpreter or '(not set)'}")
+            echo(f"    New: {interpreter_path}")
+            echo("  settings.python.terminal.activateEnvironment: true")
+            echo('  settings.python.envFile: "${workspaceFolder}/.env.uve"')
+            if export_as_default is not None:
+                echo("\n[DRY RUN] Would set default workspace in .env.uve")
     else:
         write_workspace(workspace_file, workspace_data)
-        success("VS Code workspace configured")
-        echo(f"\nWorkspace: {workspace_file.name}")
-        echo("\nSettings applied:")
-        echo(f"  ✓ Python interpreter: {interpreter_path}")
-        if export_as_default is not None:
-            echo("  ✓ Default workspace saved to .env.uve")
-        echo("\nNext steps:")
-        echo("  1. Open workspace in VS Code:")
-        echo(f"     code {workspace_file.name}")
-        echo("\n  2. Reload window if already open:")
-        echo('     Ctrl+Shift+P → "Developer: Reload Window"')
-        echo("\n  3. Open new terminal (Ctrl+`):")
-        echo(f"     Should show: ({project_root.name}) in prompt")
-        echo("\n  4. If interpreter not detected:")
-        echo('     Ctrl+Shift+P → "Python: Select Interpreter"')
+        if not json_output:
+            success("VS Code workspace configured")
+            echo(f"\nWorkspace: {workspace_file.name}")
+            echo("\nSettings applied:")
+            echo(f"  ✓ Python interpreter: {interpreter_path}")
+            if export_as_default is not None:
+                echo("  ✓ Default workspace saved to .env.uve")
+            echo("\nNext steps:")
+            echo("  1. Open workspace in VS Code:")
+            echo(f"     code {workspace_file.name}")
+            echo("\n  2. Reload window if already open:")
+            echo('     Ctrl+Shift+P → "Developer: Reload Window"')
+            echo("\n  3. Open new terminal (Ctrl+`):")
+            echo(f"     Should show: ({project_root.name}) in prompt")
+            echo("\n  4. If interpreter not detected:")
+            echo('     Ctrl+Shift+P → "Python: Select Interpreter"')
 
     if json_output:
         print_json(
