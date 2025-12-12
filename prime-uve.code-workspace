@@ -3,9 +3,5 @@
     {
       "path": "."
     }
-  ],
-  "joe": "banana",
-  "settings": {
-    "python.defaultInterpreterPath": "${userHome}/.cache/prime-uve/venvs/prime-uve_2a01a7f1/bin/python"
-  }
+  ]
 }
