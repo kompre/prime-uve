@@ -205,18 +205,15 @@ prime-uve register  # Register current project from existing .env.uve
 
 ## VS Code Integration
 
-::: {.callout-tip}
-
-You actually can use use `prime-uve` itself to launch VS Code:
-
-```bash
-cd your-project/
-uve run code .
-```
-
-VS code will pick up the correct venv automatically, on linux, macos, or (to a lesser extent) also on windows.^[2]
-
-:::
+> [!TIP]
+> You actually can use use `prime-uve` itself to launch VS Code:
+>
+> ```bash
+> cd your-project/
+> uve run code .
+> ```
+> 
+> VS code will pick up the correct venv automatically, on linux, macos, or (to > a lesser extent) also on windows.^[2]
 
 [^2]: On windows when entering `code` in the terminal, it will not resolve to `code.exe` but to `code.cmd`, which is a javascript cli wrapper for `code.exe` (used to provide more options at the command line). This means that `uve run code .` will not actually work, but `uve run code.cmd .` will. And even if vscode recognize the correct path of the venv, it will label it as `sytem` interpreter instead of `venv`, which is annoying. Running instead `uve run <path/to/code.exe> .` will work as expected, but requires full path to the `code.exe` binary, or adding the binary to the PATH environment variable.
 
