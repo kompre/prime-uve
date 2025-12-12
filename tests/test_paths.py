@@ -411,10 +411,9 @@ class TestPlatformAwarePaths:
     def test_data_path_macos(self, mock_system):
         """macOS uses Library/Application Support."""
         path = get_default_data_path()
-        assert (
-            "Library/Application Support/prime-uve" in str(path)
-            or "prime-uve" in str(path)
-        )
+        assert "Library/Application Support/prime-uve" in str(
+            path
+        ) or "prime-uve" in str(path)
 
     @patch("platform.system", return_value="Windows")
     @patch.dict(os.environ, {"LOCALAPPDATA": "C:\\Users\\test\\AppData\\Local"})
