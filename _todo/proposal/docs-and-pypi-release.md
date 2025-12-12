@@ -49,14 +49,21 @@ Update README.md with accurate documentation and prepare for stable 1.0.0 releas
 
 ### What prime-uve IS
 
-A **thin wrapper for uv** that enables external virtual environment management through automatic environment variable injection.
+A **thin wrapper for uv** that automatically provide `uv` commands with environment variables from a `.env.uve` file. The main scope of prime-uve is to run `uv` command with the environment variable `UV_PROJECT_ENVIRONMENT` set, so that the venv will be created in a central location on the machine, and not in the project directory. `prime-uve` provide two cli:
+
+- `uve` - *Almost* just an alias for `uv run --env-file .env.uve -- uv [ARGS]`
+- `prime-uve` - Interface for setting up `.env.uve` file, keeping track of venvs, and configuring VS Code workspaces
 
 **Core capabilities**:
-- `uve` command wraps uv with automatic `.env.uve` loading
-- Manages venvs in platform-specific cache locations (not project directories)
-- Tracks venv-to-project mappings in local cache
-- Configures VS Code workspaces with platform-generic paths
-- Provides shell integration (activate, shell spawn)
+- `uve` command is *almost* an alias for `uv run --env-file .env.uve -- uv [ARGS]`: 
+  - it will find the first `.env.uve` in folder or parent folders, so that it can be called from a subdirectory of a project
+  - it will inject `PRIMEUVE_VENVS_PATH` environment variable according to platform
+- `prime-uve` is an interface for:
+  - setting up initial `.env.uve` file
+  - keeps track of venvs saved to the cache location (not project directories)
+  - delete managed venvs from the cache
+  - Configures VS Code workspaces with platform-generic paths
+  - Provides shell integration (activate, shell spawn)
 
 ### What prime-uve IS NOT
 
@@ -64,7 +71,7 @@ A **thin wrapper for uv** that enables external virtual environment management t
 - **Not a virtual environment creator** - Uses uv to create venvs
 - **Not a package manager** - No dependency resolution or package installation
 - **Not like poetry/pipenv** - Doesn't manage dependencies, just venv locations
-- **Not a Python version manager** - Use uv's Python management or pyenv
+- **Not a Python version manager** - Use uv's Python management
 
 ### Core Architecture
 
@@ -126,7 +133,7 @@ Some scenarios require virtual environments outside the project directory:
 - **Centralized management**: All venvs in one location for easy cleanup
 - **Cross-platform teams**: Same `.env.uve` works on Linux, macOS, and Windows
 
-uv can use external venvs via the `UV_PROJECT_ENVIRONMENT` variable, but requires it to be set for every command. prime-uve automates this with the `uve` wrapper and `${PRIMEUVE_VENVS_PATH}` variable expansion.
+uv can use external venvs via the `UV_PROJECT_ENVIRONMENT` variable, but requires it to be set for every command. The `uve` command automates this by running `uv run --env-file .env.uve -- uv [args]` with automatic `.env.uve` discovery and `${PRIMEUVE_VENVS_PATH}` injection.
 ```
 
 ### 2. Fix Path Configuration Section
@@ -289,46 +296,69 @@ prime-uve dir               # Open venvs directory in file explorer
 prime-uve register          # Manually register current project in cache
 prime-uve --version         # Show version
 ```
-```
+
 
 ### 5. Add Architecture Section
 
-Replace current "Architecture" section:
+Replace current "Architecture" section (lines 109-115):
 
 ```markdown
 ## How It Works
 
-### The `uve` Wrapper
+### The `uve` Command
 
-When you run `uve sync`, here's what happens:
+`uve` is almost an alias for `uv run --env-file .env.uve -- uv [args]` with two enhancements:
 
-1. `uve` searches for `.env.uve` (walks up directory tree)
-2. Injects `PRIMEUVE_VENVS_PATH` environment variable with platform-specific cache path
+1. **Automatic `.env.uve` discovery**: Searches current directory and walks up parent directories
+2. **Platform-aware variable injection**: Sets `PRIMEUVE_VENVS_PATH` to platform-specific cache location
+
+**Example workflow** when you run `uve sync`:
+
+1. `uve` finds `.env.uve` (walks up directory tree from current location)
+2. Injects `PRIMEUVE_VENVS_PATH` environment variable:
+   - Linux: `~/.cache/prime-uve/venvs`
+   - macOS: `~/Library/Caches/prime-uve/venvs`
+   - Windows: `%LOCALAPPDATA%\prime-uve\Cache\venvs`
 3. Runs: `uv run --env-file .env.uve -- uv sync`
-4. uv reads `UV_PROJECT_ENVIRONMENT=${PRIMEUVE_VENVS_PATH}/project_hash`
+4. uv reads `UV_PROJECT_ENVIRONMENT=${PRIMEUVE_VENVS_PATH}/project_hash` from `.env.uve`
 5. Variable expands to actual path (e.g., `~/.cache/prime-uve/venvs/project_hash`)
-6. uv uses the external venv
+6. uv creates/uses venv at the expanded external location
 
-### Cache Tracking
+This means you can run `uve` commands from any subdirectory within your project, and the same `.env.uve` file works across different platforms and users.
 
-prime-uve maintains a local cache (`~/.local/share/prime-uve/cache.json` on Linux) that tracks:
-- Project path → Venv path mappings
-- Last validation timestamp
-- Validation status (valid, orphaned, path mismatch)
+### The `prime-uve` Interface
 
-This enables:
-- `prime-uve list` to show project status
-- `prime-uve prune --orphan` to clean deleted projects
-- Detection of moved/renamed projects
+`prime-uve` provides commands to:
 
-### Platform-Aware Paths
+**Setup and initialization**:
+- `prime-uve init` - Creates `.env.uve` with `UV_PROJECT_ENVIRONMENT=${PRIMEUVE_VENVS_PATH}/project_hash`
 
-Venv locations follow OS conventions:
-- **Linux**: XDG Base Directory Specification (`~/.cache`)
-- **macOS**: Apple guidelines (`~/Library/Caches`)
-- **Windows**: Windows folder structure (`%LOCALAPPDATA%`)
+**Venv tracking** (cache at `~/.local/share/prime-uve/cache.json` on Linux):
+- `prime-uve list` - Shows all venvs with validation status
+- `prime-uve prune` - Removes venvs (--orphan for deleted projects, --all for everything)
+- `prime-uve register` - Manually add project to cache
 
-Override with `PRIMEUVE_VENVS_PATH` environment variable if needed.
+**Shell integration**:
+- `prime-uve activate` - Outputs activation commands for current shell
+- `prime-uve shell` - Spawns new shell with venv activated
+
+**IDE integration**:
+- `prime-uve configure vscode` - Updates workspace files with platform-generic interpreter paths
+
+**Utilities**:
+- `prime-uve dir` - Opens venvs cache directory in file explorer
+
+### Platform-Aware Defaults
+
+The `PRIMEUVE_VENVS_PATH` variable automatically uses platform-specific cache locations following OS conventions:
+
+| Platform | Environment Variable | Default Location |
+|----------|---------------------|------------------|
+| Linux | `XDG_CACHE_HOME` | `~/.cache/prime-uve/venvs` |
+| macOS | - | `~/Library/Caches/prime-uve/venvs` |
+| Windows | `LOCALAPPDATA` | `%LOCALAPPDATA%\prime-uve\Cache\venvs` |
+
+Override by setting `PRIMEUVE_VENVS_PATH` environment variable before running `uve` commands.
 ```
 
 ## CHANGELOG.md Creation
