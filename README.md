@@ -23,10 +23,10 @@ As a side effect, this also loads any other environment variables you set in `.e
 
 ## Features
 
-- **`uve` command** - Alias for `uv run --env-file .env.uve -- uv [command]`
+- **`uve` command** - Alias for `uv run --env-file .env.uve -- uv [command]` (almost)
 - **`prime-uve` CLI** - Venv management with external venv locations
 - **Automatic `.env.uve` discovery** - Walks up directory tree to find config
-- **Cross-platform paths** - Uses expandable env variables (`$HOME`)
+- **Cross-platform paths** - Uses expandable env variables (`${PRIMEUVE_VENVS_PATH}`)
 - **Centralized venv storage** - Keep venvs organized outside project directories
 - **Orphan detection** - Track and clean up venvs from deleted projects
 
@@ -50,7 +50,7 @@ prime-uve init
 
 This creates `.env.uve` with:
 ```bash
-UV_PROJECT_ENVIRONMENT="$HOME/prime-uve/venvs/<project_name>_<hash>"
+UV_PROJECT_ENVIRONMENT="${PRIMEUVE_VENVS_PATH}/myproject_abc123"
 ```
 
 ### 2. Use `uve` instead of `uv`
@@ -65,8 +65,10 @@ uve run python script.py    # Instead of: uv run --env-file .env.uve -- uv run p
 
 The lookup logic for `.env.uve`:
 
-1. Look for `.env.uve` in current directory
-2. If not found and cwd is not project root (no `pyproject.toml`), walk up the tree
+1. Start from current directory
+2. Check for `.env.uve` in current directory
+3. If not found, walk up the directory tree checking each parent directory
+4. Continue until `.env.uve` is found or filesystem root is reached
 
 This ensures commands work correctly from any subdirectory within your project.
 
@@ -94,6 +96,12 @@ Output activation commands for current shell:
 eval "$(prime-uve activate)"  # Activate venv in current shell (bash/zsh)
 ```
 
+or:
+
+```pwsh
+prime-uve activate | Invoke-Expression  # Activate venv in current shell (PowerShell)
+```
+
 ### `prime-uve shell`
 Spawn new shell with venv activated:
 
@@ -112,7 +120,7 @@ prime-uve dir  # Opens platform-specific venvs cache directory
 ```
 
 ### `prime-uve register`
-Manually register current project in cache (rarely needed):
+Manually register current project in cache (rarely needed, current project is registered automatically when `prime-uve list` or `prime-uve prune` is run):
 
 ```bash
 prime-uve register  # Register current project from existing .env.uve
@@ -212,7 +220,7 @@ The path includes:
 
 ### The `uve` Command
 
-`uve` is almost an alias for `uv run --env-file .env.uve -- uv [args]` with two enhancements:
+`uve` is *almost* an alias for `uv run --env-file .env.uve -- uv [args]` with two enhancements:
 
 1. **Automatic `.env.uve` discovery**: Searches current directory and walks up parent directories
 2. **Platform-aware variable injection**: Sets `PRIMEUVE_VENVS_PATH` to platform-specific cache location
