@@ -3,8 +3,5 @@
     {
       "path": "."
     }
-  ],
-  "settings": {
-    "python.defaultInterpreterPath": "${env:PRIMEUVE_VENVS_PATH}/prime-uve_2a01a7f1/bin/python"
-  }
+  ]
 }

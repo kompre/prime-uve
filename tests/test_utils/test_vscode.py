@@ -6,8 +6,11 @@ from pathlib import Path
 import pytest
 
 from prime_uve.utils.vscode import (
+    absolute_to_vscode_path,
     create_default_workspace,
     find_workspace_files,
+    get_platform_suffix,
+    get_workspace_filename,
     read_workspace,
     strip_json_comments,
     update_workspace_settings,
@@ -317,3 +320,163 @@ def test_interpreter_path_format():
     assert isinstance(result["settings"]["python.defaultInterpreterPath"], str)
     # Path conversion is platform-specific, just verify it's converted to string
     assert "python" in result["settings"]["python.defaultInterpreterPath"]
+
+
+# Platform Suffix Tests
+
+
+def test_get_platform_suffix(monkeypatch):
+    """Test platform name mapping."""
+    import platform as platform_mod
+
+    # Test Linux
+    monkeypatch.setattr(platform_mod, "system", lambda: "Linux")
+    assert get_platform_suffix() == "linux"
+
+    # Test macOS
+    monkeypatch.setattr(platform_mod, "system", lambda: "Darwin")
+    assert get_platform_suffix() == "macos"
+
+    # Test Windows
+    monkeypatch.setattr(platform_mod, "system", lambda: "Windows")
+    assert get_platform_suffix() == "windows"
+
+
+def test_get_platform_suffix_unknown(monkeypatch):
+    """Test unknown platform fallback."""
+    import platform as platform_mod
+
+    monkeypatch.setattr(platform_mod, "system", lambda: "FreeBSD")
+    assert get_platform_suffix() == "freebsd"  # Lowercased
+
+
+# Path Translation Tests
+
+
+def test_absolute_to_vscode_path_linux(monkeypatch):
+    """Test path translation on Linux."""
+    import platform as platform_mod
+    import os
+
+    monkeypatch.setattr(platform_mod, "system", lambda: "Linux")
+    monkeypatch.setattr(os.path, "expanduser", lambda x: "/home/testuser")
+
+    # Test home directory replacement
+    path = Path("/home/testuser/.cache/prime-uve/venvs/project_abc123")
+    result = absolute_to_vscode_path(path)
+
+    assert result == "${userHome}/.cache/prime-uve/venvs/project_abc123"
+
+
+def test_absolute_to_vscode_path_macos(monkeypatch):
+    """Test path translation on macOS."""
+    import platform as platform_mod
+    import os
+
+    monkeypatch.setattr(platform_mod, "system", lambda: "Darwin")
+    monkeypatch.setattr(os.path, "expanduser", lambda x: "/Users/testuser")
+
+    # Test home directory replacement
+    path = Path("/Users/testuser/Library/Caches/prime-uve/venvs/project_abc123")
+    result = absolute_to_vscode_path(path)
+
+    assert result == "${userHome}/Library/Caches/prime-uve/venvs/project_abc123"
+
+
+def test_absolute_to_vscode_path_windows(monkeypatch):
+    """Test path translation on Windows."""
+    import platform as platform_mod
+
+    monkeypatch.setattr(platform_mod, "system", lambda: "Windows")
+    monkeypatch.setenv("LOCALAPPDATA", "C:\\Users\\testuser\\AppData\\Local")
+
+    # Test LOCALAPPDATA replacement
+    path = Path("C:/Users/testuser/AppData/Local/prime-uve/Cache/venvs/project_abc123")
+    result = absolute_to_vscode_path(path)
+
+    assert result == "${env:LOCALAPPDATA}/prime-uve/Cache/venvs/project_abc123"
+
+
+def test_absolute_to_vscode_path_linux_xdg(monkeypatch):
+    """Test XDG_CACHE_HOME on Linux."""
+    import platform as platform_mod
+
+    monkeypatch.setattr(platform_mod, "system", lambda: "Linux")
+    monkeypatch.setenv("XDG_CACHE_HOME", "/custom/cache")
+
+    # Test XDG_CACHE_HOME replacement
+    path = Path("/custom/cache/prime-uve/venvs/project_abc123")
+    result = absolute_to_vscode_path(path)
+
+    assert result == "${env:XDG_CACHE_HOME}/prime-uve/venvs/project_abc123"
+
+
+def test_absolute_to_vscode_path_fallback():
+    """Test fallback to absolute path when no variables match."""
+
+    # Test with custom path that doesn't match any variables
+    path = Path("/opt/custom/venv/project")
+    result = absolute_to_vscode_path(path)
+
+    # Should return absolute path with forward slashes
+    assert result == "/opt/custom/venv/project"
+
+
+# Workspace Filename Tests
+
+
+def test_get_workspace_filename_no_suffix(tmp_path):
+    """Test workspace filename without suffix."""
+    project_root = tmp_path / "myproject"
+    project_root.mkdir()
+
+    result = get_workspace_filename(project_root, None, None)
+
+    assert result == project_root / "myproject.code-workspace"
+
+
+def test_get_workspace_filename_with_suffix(tmp_path):
+    """Test workspace filename with suffix."""
+    project_root = tmp_path / "myproject"
+    project_root.mkdir()
+
+    result = get_workspace_filename(project_root, "linux", None)
+
+    assert result == project_root / "myproject.linux.code-workspace"
+
+
+def test_get_workspace_filename_based_on_existing(tmp_path):
+    """Test workspace filename based on existing file."""
+    project_root = tmp_path / "myproject"
+    project_root.mkdir()
+
+    existing = project_root / "custom.code-workspace"
+    existing.touch()
+
+    result = get_workspace_filename(project_root, "dev", existing)
+
+    assert result == project_root / "custom.dev.code-workspace"
+
+
+def test_get_workspace_filename_strips_platform_suffix(tmp_path):
+    """Test that existing platform suffixes are stripped."""
+    project_root = tmp_path / "myproject"
+    project_root.mkdir()
+
+    existing = project_root / "custom.linux.code-workspace"
+    existing.touch()
+
+    result = get_workspace_filename(project_root, "macos", existing)
+
+    # Should strip .linux and add .macos
+    assert result == project_root / "custom.macos.code-workspace"
+
+
+def test_get_workspace_filename_multiple_dots(tmp_path):
+    """Test workspace filename with multiple dots in name."""
+    project_root = tmp_path / "my.cool.project"
+    project_root.mkdir()
+
+    result = get_workspace_filename(project_root, "windows", None)
+
+    assert result == project_root / "my.cool.project.windows.code-workspace"

@@ -262,6 +262,30 @@ def configure():
     "--workspace", type=click.Path(), help="Specific workspace file to update"
 )
 @click.option("--create", is_flag=True, help="Create new workspace file")
+@click.option(
+    "--suffix",
+    is_flag=False,
+    flag_value="__auto__",
+    help="Create platform-specific workspace with suffix (uses OS name if no value given)",
+)
+@click.option(
+    "--merge",
+    is_flag=False,
+    flag_value="__default__",
+    help="Merge settings from another workspace file (requires --suffix; uses default workspace if no value given)",
+)
+@click.option(
+    "--expand",
+    is_flag=True,
+    default=False,
+    help="Use fully expanded absolute paths instead of VS Code variables",
+)
+@click.option(
+    "--export-as-default",
+    is_flag=False,
+    flag_value="__merge__",
+    help="Save workspace as default in .env.uve (uses --merge source if provided, otherwise specify file)",
+)
 @common_options
 @handle_errors
 @click.pass_context
@@ -269,6 +293,10 @@ def vscode(
     ctx,
     workspace: Optional[str],
     create: bool,
+    suffix: Optional[str],
+    merge: Optional[str],
+    expand: bool,
+    export_as_default: Optional[str],
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -286,13 +314,39 @@ def vscode(
 
         prime-uve configure vscode                    # Update or create workspace
 
+        prime-uve configure vscode --suffix           # Create platform-specific workspace (e.g., project.linux.code-workspace)
+
+        prime-uve configure vscode --suffix dev       # Create workspace with custom suffix
+
+        prime-uve configure vscode --suffix --merge   # Create platform-specific workspace, merge from default workspace
+
+        prime-uve configure vscode --suffix --merge joe.code-workspace  # Merge settings from joe.code-workspace
+
+        prime-uve configure vscode --expand           # Use absolute paths instead of variables
+
         prime-uve configure vscode --workspace myproject.code-workspace
+
+        prime-uve configure vscode --export-as-default myproject.code-workspace  # Set default workspace for merging
+
+        prime-uve configure vscode --suffix --merge joe.code-workspace --export-as-default  # Merge from joe.code-workspace and set as default
 
         prime-uve configure vscode --dry-run          # Preview changes
     """
     from prime_uve.cli.configure import configure_vscode_command
 
-    configure_vscode_command(ctx, workspace, create, verbose, yes, dry_run, json_output)
+    configure_vscode_command(
+        ctx,
+        workspace,
+        create,
+        suffix,
+        merge,
+        expand,
+        export_as_default,
+        verbose,
+        yes,
+        dry_run,
+        json_output,
+    )
 
 
 def main():

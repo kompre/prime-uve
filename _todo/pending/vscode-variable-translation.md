@@ -345,3 +345,64 @@ prime-uve configure vscode --suffix local --expand
   - `--suffix` option tests
   - `--expand` flag tests
   - Combined options tests (`--suffix` + `--expand`)
+
+---
+
+## Implementation Completed
+
+**Date**: 2025-12-11
+**Branch**: feature/vscode-variable-translation
+**PR**: https://github.com/kompre/prime-uve/pull/32
+
+### Summary
+
+Successfully implemented variable translation for VS Code workspace configuration. The implementation includes:
+
+1. **Three new utility functions** in `src/prime_uve/utils/vscode.py`:
+   - `get_platform_suffix()` - Maps platform system names to user-friendly names
+   - `absolute_to_vscode_path()` - Translates absolute paths to VS Code variable syntax
+   - `get_workspace_filename()` - Handles workspace file naming with suffix support
+
+2. **CLI enhancements** in `src/prime_uve/cli/main.py` and `src/prime_uve/cli/configure.py`:
+   - Added `--suffix [VALUE]` option (uses OS name if no value provided)
+   - Added `--expand` flag for absolute path mode
+   - Integrated path translation into workspace configuration flow
+
+3. **Comprehensive test coverage**:
+   - 12 new unit tests for the new functions
+   - Updated 1 existing test to reflect new behavior
+   - All 448 tests passing ✅
+
+### What Was Delivered
+
+✅ Platform-generic VS Code variables by default (`${userHome}`, `${env:LOCALAPPDATA}`)
+✅ `--suffix` option for platform-specific workspace files
+✅ `--expand` flag for users who prefer absolute paths
+✅ User-friendly platform names (linux/macos/windows instead of Linux/Darwin/Windows)
+✅ Full backward compatibility with existing workspaces
+✅ Comprehensive test coverage
+
+### Testing Results
+
+- Unit tests: 31/31 passing in `test_vscode.py`
+- Integration tests: 21/21 passing in `test_configure.py`
+- Full test suite: 448/448 tests passing
+- Manual smoke test: Command help displays correctly
+
+### Files Changed
+
+- `src/prime_uve/utils/vscode.py` - Added 3 new functions, ~120 lines
+- `src/prime_uve/cli/main.py` - Added 2 new CLI options
+- `src/prime_uve/cli/configure.py` - Integrated new logic, ~100 lines changed
+- `tests/test_utils/test_vscode.py` - Added 12 new tests
+- `tests/test_cli/test_configure.py` - Updated 1 test
+
+Total: 5 files, ~398 new lines of code (including tests)
+
+### Next Steps
+
+After PR approval and merge:
+- Move task from `pending/` to `completed/YYYY-MM-DD/`
+- Update task with final notes
+- Archive task file
+
