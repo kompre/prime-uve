@@ -26,7 +26,9 @@ That syntax is a bit inconvenient to write for each command a user amy want to r
 - it's a long command to type
 - user need to provide the exact path to the `.env` file
 
-To make things easier, `prime-uve`^[yes, it's read like the grappa] rely on `.env.uve` file where the `UV_PROJECT_ENVIRONMENT` variable is defined, for `uv` to run with. `prime-uve`  provide 2 cli commands:
+To make things easier, `prime-uve`[^1] rely on `.env.uve` file where the `UV_PROJECT_ENVIRONMENT` variable is defined, for `uv` to run with. `prime-uve`  provide 2 cli commands:
+
+[^1]: yes, it's read like the grappa
 
 `uve`
 : *almost* just an alias for `uv run --env-file .env.uve -- uv [args]` 
