@@ -122,7 +122,7 @@ wheels = [
 
 [[package]]
 name = "prime-uve"
-version = "0.2.0rc11"
+version = "0.2.0rc12"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
