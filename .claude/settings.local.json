@@ -21,7 +21,11 @@
       "Bash(gh label create:*)",
       "Bash(gh pr edit:*)",
       "Bash(gh run list:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git cherry-pick:*)",
+      "Bash(prime-uve configure:*)",
+      "Bash(cat:*)",
+      "Bash(prime-uve:*)"
     ],
     "deny": [],
     "ask": []

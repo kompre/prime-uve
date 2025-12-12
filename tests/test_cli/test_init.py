@@ -56,7 +56,7 @@ def test_init_creates_env_file(runner, mock_project, cache_file, monkeypatch):
 
         content = env_file.read_text()
         assert "UV_PROJECT_ENVIRONMENT=" in content
-        assert "${HOME}/prime-uve/venvs/" in content
+        assert "${PRIMEUVE_VENVS_PATH}/" in content
         assert "test-project" in content or "test_project" in content
 
 
@@ -93,9 +93,9 @@ def test_init_uses_variable_form_in_env_file(
         env_file = mock_project / ".env.uve"
         content = env_file.read_text()
 
-        # Should contain ${HOME}, not expanded path
-        assert "${HOME}" in content
-        # Should NOT contain actual home directory path
+        # Should contain ${PRIMEUVE_VENVS_PATH}, not expanded path
+        assert "${PRIMEUVE_VENVS_PATH}" in content
+        # Should NOT contain actual paths
         import os
 
         home = os.path.expanduser("~")
@@ -118,7 +118,8 @@ def test_init_success_message_shows_next_steps(
         output = result.output
         assert "Next steps:" in output
         assert "uve sync" in output
-        assert "Commit .env.uve" in output
+        assert "Created .env.uve" in output
+        assert "Expanded:" in output
 
 
 # Already Initialized Tests
@@ -225,7 +226,7 @@ def test_init_force_preserves_format(runner, mock_project, cache_file, monkeypat
         env_file.write_text(
             """# Database config
 DATABASE_URL=postgres://localhost
-UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/test_old
+UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/test_old
 
 # API keys
 API_KEY=secret
@@ -259,7 +260,7 @@ def test_init_force_shows_confirmation(runner, mock_project, cache_file, monkeyp
         # Manually change the venv path in .env.uve to create a different path
         env_file = mock_project / ".env.uve"
         env_file.write_text(
-            "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/old_venv_path\n"
+            "UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/old_venv_path\n"
         )
 
         # Force without --yes should prompt (we'll cancel it)

@@ -7,10 +7,13 @@ from typing import Optional
 
 import click
 
-from prime_uve.cli.output import echo, error, info, print_json
+from prime_uve.cli.output import echo, error, info, print_json, _SYMBOLS
+from prime_uve.cli.register import auto_register_current_project
 from prime_uve.core.cache import Cache
 from prime_uve.core.env_file import read_env_file
-from prime_uve.core.paths import expand_path_variables, get_venv_base_dir
+from prime_uve.core.paths import expand_path_variables
+from prime_uve.utils.disk import format_bytes, get_disk_usage
+from prime_uve.utils.venv import find_untracked_venvs
 
 
 @dataclass
@@ -28,7 +31,9 @@ class ValidationResult:
     disk_usage_bytes: int
 
 
-def validate_project_mapping(project_path: str, cache_entry: dict) -> ValidationResult:
+def validate_project_mapping(
+    project_path: str, cache_entry: dict, calculate_disk_usage: bool = False
+) -> ValidationResult:
     """
     Validate a project mapping.
 
@@ -39,6 +44,7 @@ def validate_project_mapping(project_path: str, cache_entry: dict) -> Validation
     Args:
         project_path: Absolute path to project directory
         cache_entry: Cache entry with venv_path, project_name, etc.
+        calculate_disk_usage: If True, calculate disk usage (slower). Default False.
 
     Returns:
         ValidationResult with validation status
@@ -60,9 +66,9 @@ def validate_project_mapping(project_path: str, cache_entry: dict) -> Validation
     except Exception:
         pass  # Any error → not valid
 
-    # Get disk usage if venv exists
+    # Get disk usage if requested and venv exists
     disk_usage = 0
-    if venv_path_expanded.exists():
+    if calculate_disk_usage and venv_path_expanded.exists():
         try:
             disk_usage = get_disk_usage(venv_path_expanded)
         except Exception:
@@ -79,115 +85,6 @@ def validate_project_mapping(project_path: str, cache_entry: dict) -> Validation
         env_venv_path=env_venv_path,
         disk_usage_bytes=disk_usage,
     )
-
-
-def scan_venv_directory() -> list[Path]:
-    """
-    Scan venv base directory for all venv directories.
-
-    Returns:
-        List of venv directory paths
-    """
-    venv_base = get_venv_base_dir()
-    if not venv_base.exists():
-        return []
-
-    try:
-        return [d for d in venv_base.iterdir() if d.is_dir()]
-    except (OSError, PermissionError):
-        return []
-
-
-def find_untracked_venvs(cache_entries: dict) -> list[dict]:
-    """
-    Find venvs on disk that aren't in cache (treat as orphans).
-
-    Args:
-        cache_entries: Dictionary of cache entries (project_path -> entry)
-
-    Returns:
-        List of untracked venv dictionaries
-    """
-    all_venvs = scan_venv_directory()
-    tracked_venvs = set()
-
-    # Build set of tracked venv paths
-    for cache_entry in cache_entries.values():
-        venv_path_expanded = expand_path_variables(cache_entry["venv_path"])
-        tracked_venvs.add(venv_path_expanded)
-
-    # Find untracked venvs
-    untracked = []
-    for venv_dir in all_venvs:
-        if venv_dir not in tracked_venvs:
-            # Extract project name from directory name (e.g., "test-project_abc123" -> "test-project")
-            dir_name = venv_dir.name
-            project_name = dir_name.rsplit("_", 1)[0] if "_" in dir_name else dir_name
-
-            untracked.append(
-                {
-                    "project_name": f"<unknown: {project_name}>",
-                    "venv_path": None,  # No variable form for untracked
-                    "venv_path_expanded": venv_dir,
-                    "hash": None,  # No hash for untracked
-                    "created_at": None,  # No creation time for untracked
-                    "is_valid": False,  # Treat as orphan
-                    "env_venv_path": None,
-                    "disk_usage_bytes": get_disk_usage(venv_dir),
-                }
-            )
-
-    return untracked
-
-
-def get_disk_usage(path: Path) -> int:
-    """
-    Calculate total disk usage of a directory in bytes.
-
-    Args:
-        path: Directory path
-
-    Returns:
-        Total size in bytes
-    """
-    total = 0
-    try:
-        for item in path.rglob("*"):
-            if item.is_file():
-                try:
-                    total += item.stat().st_size
-                except (OSError, PermissionError):
-                    pass
-    except (OSError, PermissionError):
-        pass
-    return total
-
-
-def format_bytes(size: int) -> str:
-    """
-    Format bytes to human-readable string.
-
-    Args:
-        size: Size in bytes
-
-    Returns:
-        Formatted string (e.g., "125 MB", "1.5 GB")
-    """
-    if size == 0:
-        return "0 B"
-
-    units = ["B", "KB", "MB", "GB", "TB"]
-    unit_index = 0
-
-    size_float = float(size)
-    while size_float >= 1024 and unit_index < len(units) - 1:
-        size_float /= 1024
-        unit_index += 1
-
-    if unit_index == 0:
-        return f"{int(size_float)} {units[unit_index]}"
-    else:
-        return f"{size_float:.1f} {units[unit_index]}"
 
 
 def truncate_path(path: str, max_length: int) -> str:
@@ -208,6 +105,20 @@ def truncate_path(path: str, max_length: int) -> str:
     return "..." + path[-(max_length - 3) :]
 
 
+def get_current_project_root() -> Path | None:
+    """Get current project root if in a managed project.
+
+    Returns:
+        Path to current project root, or None if not in a project
+    """
+    try:
+        from prime_uve.core.project import find_project_root
+
+        return find_project_root()
+    except Exception:
+        return None
+
+
 def output_table(results: list, stats: dict, verbose: bool) -> None:
     """
     Output results as a formatted table.
@@ -218,6 +129,19 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
         verbose: Whether to show verbose output
     """
     echo("Managed Virtual Environments\n")
+
+    # Show legend with colored symbols
+    legend_parts = [
+        "Legend: ",
+        click.style(f"{_SYMBOLS['success']}", fg="green"),
+        ": valid | ",
+        click.style(f"{_SYMBOLS['error']}", fg="red"),
+        ": orphan | <>: current project\n",
+    ]
+    click.echo("".join(legend_parts))
+
+    # Get current project root for highlighting
+    current_project_root = get_current_project_root()
 
     if verbose:
         # Wide format with disk usage
@@ -263,37 +187,57 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 else result.get("project_path")
             )
 
-            # Use ASCII-safe symbols for Windows compatibility
-            status_symbol = "[OK]" if is_valid else "[!]"
+            # Check if this is the current project
+            is_current = (
+                current_project_root is not None
+                and project_path is not None
+                and Path(project_path).resolve() == current_project_root.resolve()
+            )
+
+            # Use symbols from output module
+            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
+            current_marker = "<>" if is_current else "  "
             status_text = "Valid" if is_valid else "Orphan"
             size = format_bytes(disk_usage)
-            status_display = f"{status_symbol} {status_text}"
+            status_display = f"{status_symbol}{current_marker} {status_text}"
 
             color = "green" if is_valid else "red"
             # Show project name, status, size on first line
             formatted_line = f"{project_name:<20} "
-            echo(formatted_line, nl=False)
-            click.secho(f"{status_display:<15}", fg=color, nl=False)
-            echo(f" {size}")  # Size on same line
+            click.secho(formatted_line, nl=False, fg="magenta", bold=is_current)
+            click.secho(f"{status_display:<15}", fg=color, nl=False, bold=is_current)
+            click.secho(f" {size}", bold=is_current)  # Size on same line
 
             # Extra details in verbose mode
             if project_path:
-                echo(f"  Project: {project_path}")
-            echo(f"  Venv:    {venv_path_expanded}")
+                click.secho(f"  Project: {project_path}", bold=is_current)
+            click.secho(f"  Venv:    {venv_path_expanded}", bold=is_current)
             if hash_val:
-                echo(f"  Hash:    {hash_val}")
+                click.secho(f"  Hash:    {hash_val}", bold=is_current)
             if created_at:
-                echo(f"  Created: {created_at}")
+                click.secho(f"  Created: {created_at}", bold=is_current)
 
             if not is_valid and venv_path:
-                echo(f"  Cache:     {venv_path}")
-                echo(f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}")
+                click.secho(f"  Cache:     {venv_path}", bold=is_current)
+                click.secho(
+                    f"  .env.uve:  {env_venv_path or 'Not found (or path mismatch)'}",
+                    bold=is_current,
+                )
             echo("")
     else:
-        # Compact format - venv path at end so it can be full-length/clickable
-        header = f"{'PROJECT':<20} {'STATUS':<15} {'VENV PATH'}"
+        # Compact format - new column order: STATUS | PROJECT PATH | VENV PATH
+        # Define column widths as constants
+        STATUS_WIDTH = 7
+        PROJECT_PATH_WIDTH = 60
+        VENV_PATH_WIDTH = 60
+
+        header = f"{'STATUS':<{STATUS_WIDTH}}  {'PROJECT PATH':<{PROJECT_PATH_WIDTH}}  {'VENV PATH'}"
         echo(header)
-        echo("-" * 80)  # Fixed width separator
+        # Separator width: STATUS_WIDTH + 2 spaces + PROJECT_PATH_WIDTH + 2 spaces + VENV_PATH_WIDTH
+        separator_width = STATUS_WIDTH + 2 + PROJECT_PATH_WIDTH + 2 + VENV_PATH_WIDTH
+        echo("-" * separator_width)
+
+        has_truncated_paths = False
 
         for result in results:
             # Handle both ValidationResult and untracked venv dicts
@@ -310,27 +254,75 @@ def output_table(results: list, stats: dict, verbose: bool) -> None:
                 if hasattr(result, "venv_path_expanded")
                 else result["venv_path_expanded"]
             )
+            project_path = (
+                result.project_path
+                if hasattr(result, "project_path")
+                else result.get("project_path")
+            )
 
-            # Use ASCII-safe symbols for Windows compatibility
-            status_symbol = "[OK]" if is_valid else "[!]"
-            status_text = "Valid" if is_valid else "Orphan"
-            status_display = f"{status_symbol} {status_text}"
+            # Check if this is the current project
+            is_current = (
+                current_project_root is not None
+                and project_path is not None
+                and Path(project_path).resolve() == current_project_root.resolve()
+            )
+
+            # Use symbols from output module - compact status
+            status_symbol = _SYMBOLS["success"] if is_valid else _SYMBOLS["error"]
+            current_marker = "<>" if is_current else "  "
+            status_display = f"{status_symbol}{current_marker}"
+
+            # Prepare project path display (truncate if needed)
+            project_path_str = str(project_path) if project_path else "N/A"
+            if project_path and len(project_path_str) > PROJECT_PATH_WIDTH:
+                project_path_display = truncate_path(
+                    project_path_str, PROJECT_PATH_WIDTH
+                )
+                has_truncated_paths = True
+            else:
+                project_path_display = project_path_str
+
+            # Prepare venv path display (truncate if needed)
+            venv_path_str = str(venv_path_expanded)
+            if len(venv_path_str) > VENV_PATH_WIDTH:
+                venv_path_display = truncate_path(venv_path_str, VENV_PATH_WIDTH)
+                has_truncated_paths = True
+            else:
+                venv_path_display = venv_path_str
 
             color = "green" if is_valid else "red"
-            # Don't truncate venv path - show full path so user can click it
-            formatted_line = f"{project_name:<20} "
-            echo(formatted_line, nl=False)
-            click.secho(f"{status_display:<15}", fg=color, nl=False)
-            echo(f" {venv_path_expanded}")
+
+            # Format: STATUS | PROJECT PATH | VENV PATH
+            status_styled = click.style(
+                f"{status_display:<{STATUS_WIDTH}}",
+                fg=color,
+                bold=is_current,
+            )
+            project_path_styled = click.style(
+                f"{project_path_display:<{PROJECT_PATH_WIDTH}}",
+                bold=is_current,
+            )
+            venv_path_styled = click.style(
+                venv_path_display,
+                bold=is_current,
+            )
+
+            # Output all columns
+            click.echo(f"{status_styled}  {project_path_styled}  {venv_path_styled}")
+
+        # Add hint about verbose mode if paths were truncated
+        if has_truncated_paths:
+            echo("\nTip: Use --verbose to see full paths")
 
     # Summary
-    echo(
-        f"\nSummary: {stats['total']} total, {stats['valid']} valid, {stats['orphaned']} orphaned"
+    click.secho(
+        f"\nSummary: {stats['total']} total, {stats['valid']} valid, {stats['orphaned']} orphaned",
+        bold=True,
     )
 
     if verbose and stats["total_disk_usage"] > 0:
         total_size = format_bytes(stats["total_disk_usage"])
-        echo(f"Total disk usage: {total_size}")
+        click.secho(f"Total disk usage: {total_size}", bold=True)
 
 
 def output_json_format(results: list, stats: dict) -> None:
@@ -390,6 +382,7 @@ def output_json_format(results: list, stats: dict) -> None:
 def list_command(
     ctx,
     orphan_only: bool,
+    no_auto_register: bool,
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -401,11 +394,23 @@ def list_command(
     Args:
         ctx: Click context
         orphan_only: Show only orphaned venvs
+        no_auto_register: Skip automatic registration of current project
         verbose: Show verbose output
         yes: Skip confirmations (unused here)
         dry_run: Dry run mode (unused here)
         json_output: Output as JSON
     """
+    # 0. Auto-register current project if present (unless --no-auto-register)
+    if not no_auto_register:
+        try:
+            cache = Cache()
+            was_registered, project_name = auto_register_current_project(cache)
+            if was_registered and not json_output:
+                info(f"Registered current project '{project_name}' in cache")
+        except Exception:
+            # Continue even if auto-registration fails
+            pass
+
     # 1. Load cache
     try:
         cache = Cache()
@@ -415,13 +420,20 @@ def list_command(
         sys.exit(1)
 
     # 2. Validate all cached mappings
+    # Only calculate disk usage when it will be displayed (verbose or JSON mode)
+    calculate_sizes = verbose or json_output
+
     results = []
     for project_path, cache_entry in mappings.items():
-        result = validate_project_mapping(project_path, cache_entry)
+        result = validate_project_mapping(
+            project_path, cache_entry, calculate_disk_usage=calculate_sizes
+        )
         results.append(result)
 
     # 3. Find and add untracked venvs as orphans
-    untracked_venvs = find_untracked_venvs(mappings)
+    untracked_venvs = find_untracked_venvs(
+        mappings, calculate_disk_usage=calculate_sizes
+    )
     results.extend(untracked_venvs)
 
     # If no venvs at all (cached or untracked)

@@ -170,7 +170,7 @@ def read_env_file(path: Path) -> dict[str, str]:
     Example:
         >>> env = read_env_file(Path(".env.uve"))
         >>> env["UV_PROJECT_ENVIRONMENT"]
-        '${HOME}/prime-uve/venvs/myproject_a1b2c3d4'  # NOT expanded
+        '${HOME}/.prime-uve/venvs/myproject_a1b2c3d4'  # NOT expanded
     """
     try:
         content = path.read_text(encoding="utf-8")
@@ -223,7 +223,7 @@ def write_env_file(path: Path, env_vars: dict[str, str]) -> None:
     Example:
         >>> write_env_file(
         ...     Path(".env.uve"),
-        ...     {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/proj_abc123"}
+        ...     {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/proj_abc123"}
         ... )
     """
     # Create parent directories if needed
@@ -265,7 +265,7 @@ def update_env_file(path: Path, updates: dict[str, str]) -> None:
     Example:
         >>> update_env_file(
         ...     Path(".env.uve"),
-        ...     {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/proj_new"}
+        ...     {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/proj_new"}
         ... )
     """
     # Read existing variables (or start with empty dict if file doesn't exist)
@@ -300,7 +300,7 @@ def update_env_file_preserve_format(path: Path, updates: dict[str, str]) -> None
     Example:
         >>> update_env_file_preserve_format(
         ...     Path(".env.uve"),
-        ...     {"UV_PROJECT_ENVIRONMENT": "${HOME}/prime-uve/venvs/proj_new"}
+        ...     {"UV_PROJECT_ENVIRONMENT": "${HOME}/.prime-uve/venvs/proj_new"}
         ... )
     """
     # If file doesn't exist, just write the new variables
@@ -379,9 +379,9 @@ def get_venv_path(env_vars: dict[str, str], expand: bool = False) -> str | Path:
     Example:
         >>> env = read_env_file(Path(".env.uve"))
         >>> get_venv_path(env, expand=False)
-        '${HOME}/prime-uve/venvs/myproject_a1b2c3d4'
+        '${HOME}/.prime-uve/venvs/myproject_a1b2c3d4'
         >>> get_venv_path(env, expand=True)
-        Path('/home/user/prime-uve/venvs/myproject_a1b2c3d4')
+        Path('/home/user/.prime-uve/venvs/myproject_a1b2c3d4')
     """
     venv_path = env_vars.get("UV_PROJECT_ENVIRONMENT")
 

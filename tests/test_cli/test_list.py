@@ -1,7 +1,7 @@
 """Tests for the list command."""
 
 import json
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -13,6 +13,7 @@ from prime_uve.cli.list import (
     validate_project_mapping,
 )
 from prime_uve.cli.main import cli
+from prime_uve.cli.output import _SYMBOLS
 
 
 @pytest.fixture
@@ -21,18 +22,32 @@ def runner():
     return CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def mock_venv_base_dir_global(tmp_path):
+    """Automatically mock get_venv_base_dir to use temp directory for all tests.
+
+    This prevents tests from accidentally accessing or deleting real venvs.
+    """
+    test_venv_dir = tmp_path / ".prime-uve" / "venvs"
+    test_venv_dir.mkdir(parents=True, exist_ok=True)
+
+    # Patch get_venv_base_dir in all locations where it's used
+    with patch("prime_uve.utils.venv.get_venv_base_dir", return_value=test_venv_dir):
+        yield test_venv_dir
+
+
 @pytest.fixture
 def mock_cache(tmp_path):
     """Mock cache with test data."""
     cache_data = {
         str(tmp_path / "project1"): {
-            "venv_path": "${HOME}/prime-uve/venvs/project1_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/project1_abc123",
             "project_name": "project1",
             "path_hash": "abc123",
             "created_at": "2025-12-01T10:00:00Z",
         },
         str(tmp_path / "project2"): {
-            "venv_path": "${HOME}/prime-uve/venvs/project2_def456",
+            "venv_path": "${HOME}/.prime-uve/venvs/project2_def456",
             "project_name": "project2",
             "path_hash": "def456",
             "created_at": "2025-12-02T11:00:00Z",
@@ -50,7 +65,7 @@ class TestValidateProjectMapping:
         project_path = tmp_path / "test_project"
         project_path.mkdir()
 
-        venv_path = "${HOME}/prime-uve/venvs/test_abc123"
+        venv_path = "${HOME}/.prime-uve/venvs/test_abc123"
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
 
@@ -76,8 +91,8 @@ class TestValidateProjectMapping:
         project_path = tmp_path / "test_project"
         project_path.mkdir()
 
-        cache_venv_path = "${HOME}/prime-uve/venvs/test_abc123"
-        env_venv_path = "${HOME}/prime-uve/venvs/test_xyz789"  # Different!
+        cache_venv_path = "${HOME}/.prime-uve/venvs/test_abc123"
+        env_venv_path = "${HOME}/.prime-uve/venvs/test_xyz789"  # Different!
 
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={env_venv_path}\n")
@@ -105,7 +120,7 @@ class TestValidateProjectMapping:
         # No .env.uve file created
 
         cache_entry = {
-            "venv_path": "${HOME}/prime-uve/venvs/test_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/test_abc123",
             "project_name": "test",
             "path_hash": "abc123",
             "created_at": "2025-12-01T10:00:00Z",
@@ -128,7 +143,7 @@ class TestValidateProjectMapping:
         env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/test\n")
 
         cache_entry = {
-            "venv_path": "${HOME}/prime-uve/venvs/test_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/test_abc123",
             "project_name": "test",
             "path_hash": "abc123",
             "created_at": "2025-12-01T10:00:00Z",
@@ -227,7 +242,7 @@ class TestListCommandCLI:
 
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list"])
@@ -244,7 +259,7 @@ class TestListCommandCLI:
         mock_cache_instance.list_all.return_value = {}
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--json"])
@@ -263,7 +278,7 @@ class TestListCommandCLI:
         project_path = tmp_path / "test_project"
         project_path.mkdir()
 
-        venv_path = "${HOME}/prime-uve/venvs/test_abc123"
+        venv_path = "${HOME}/.prime-uve/venvs/test_abc123"
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
 
@@ -279,7 +294,7 @@ class TestListCommandCLI:
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no untracked venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list"])
@@ -287,7 +302,7 @@ class TestListCommandCLI:
         # Assert
         assert result.exit_code == 0
         assert "test_project" in result.output
-        assert "[OK]" in result.output or "Valid" in result.output
+        assert _SYMBOLS["success"] in result.output or "Valid" in result.output
         assert "Summary: 1 total, 1 valid, 0 orphaned" in result.output
 
     def test_list_multiple_projects(self, runner, tmp_path, monkeypatch):
@@ -295,7 +310,7 @@ class TestListCommandCLI:
         # Setup valid project
         valid_project = tmp_path / "valid_project"
         valid_project.mkdir()
-        valid_venv = "${HOME}/prime-uve/venvs/valid_abc123"
+        valid_venv = "${HOME}/.prime-uve/venvs/valid_abc123"
         (valid_project / ".env.uve").write_text(
             f"UV_PROJECT_ENVIRONMENT={valid_venv}\n"
         )
@@ -314,7 +329,7 @@ class TestListCommandCLI:
                 "created_at": "2025-12-01T10:00:00Z",
             },
             str(orphan_project): {
-                "venv_path": "${HOME}/prime-uve/venvs/orphan_def456",
+                "venv_path": "${HOME}/.prime-uve/venvs/orphan_def456",
                 "project_name": "orphan_project",
                 "path_hash": "def456",
                 "created_at": "2025-12-02T11:00:00Z",
@@ -322,7 +337,7 @@ class TestListCommandCLI:
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no untracked venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list"])
@@ -339,7 +354,7 @@ class TestListCommandCLI:
         # Setup
         valid_project = tmp_path / "valid"
         valid_project.mkdir()
-        valid_venv = "${HOME}/prime-uve/venvs/valid_abc"
+        valid_venv = "${HOME}/.prime-uve/venvs/valid_abc"
         (valid_project / ".env.uve").write_text(
             f"UV_PROJECT_ENVIRONMENT={valid_venv}\n"
         )
@@ -357,7 +372,7 @@ class TestListCommandCLI:
                 "created_at": "2025-12-01T10:00:00Z",
             },
             str(orphan_project): {
-                "venv_path": "${HOME}/prime-uve/venvs/orphan_def",
+                "venv_path": "${HOME}/.prime-uve/venvs/orphan_def",
                 "project_name": "orphan",
                 "path_hash": "def",
                 "created_at": "2025-12-02T11:00:00Z",
@@ -365,7 +380,7 @@ class TestListCommandCLI:
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no untracked venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--orphan-only"])
@@ -380,7 +395,7 @@ class TestListCommandCLI:
         # Setup valid project
         project = tmp_path / "test"
         project.mkdir()
-        venv = "${HOME}/prime-uve/venvs/test_abc"
+        venv = "${HOME}/.prime-uve/venvs/test_abc"
         (project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={venv}\n")
 
         # Mock cache
@@ -395,7 +410,7 @@ class TestListCommandCLI:
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no untracked venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--orphan-only"])
@@ -409,7 +424,7 @@ class TestListCommandCLI:
         # Setup
         project = tmp_path / "test"
         project.mkdir()
-        venv = "${HOME}/prime-uve/venvs/test_abc123"
+        venv = "${HOME}/.prime-uve/venvs/test_abc123"
         (project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={venv}\n")
 
         # Mock cache
@@ -424,7 +439,7 @@ class TestListCommandCLI:
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no untracked venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--verbose"])
@@ -440,7 +455,7 @@ class TestListCommandCLI:
         # Setup
         project = tmp_path / "test"
         project.mkdir()
-        venv = "${HOME}/prime-uve/venvs/test_abc"
+        venv = "${HOME}/.prime-uve/venvs/test_abc"
         (project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={venv}\n")
 
         # Mock cache
@@ -455,7 +470,7 @@ class TestListCommandCLI:
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no untracked venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list", "--json"])
@@ -476,7 +491,7 @@ class TestListCommandCLI:
         # Setup
         project = tmp_path / "myproject"
         project.mkdir()
-        venv = "${HOME}/prime-uve/venvs/myproject_abc"
+        venv = "${HOME}/.prime-uve/venvs/myproject_abc"
         (project / ".env.uve").write_text(f"UV_PROJECT_ENVIRONMENT={venv}\n")
 
         mock_cache_instance = Mock()
@@ -490,7 +505,7 @@ class TestListCommandCLI:
         }
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return no untracked venvs
-        monkeypatch.setattr("prime_uve.cli.list.scan_venv_directory", lambda: [])
+        monkeypatch.setattr("prime_uve.utils.venv.scan_venv_directory", lambda: [])
 
         # Execute
         result = runner.invoke(cli, ["list"])
@@ -519,7 +534,7 @@ class TestListCommandCLI:
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         # Mock scan_venv_directory to return untracked venvs
         monkeypatch.setattr(
-            "prime_uve.cli.list.scan_venv_directory", lambda: [untracked_venv1]
+            "prime_uve.utils.venv.scan_venv_directory", lambda: [untracked_venv1]
         )
 
         # Execute
@@ -527,8 +542,8 @@ class TestListCommandCLI:
 
         # Assert
         assert result.exit_code == 0
-        assert "<unknown: test-project>" in result.output
-        assert "[!] Orphan" in result.output
+        # Project name no longer shown in compact table (PROJECT column removed)
+        assert _SYMBOLS["error"] in result.output  # Orphan status
         assert "Summary: 1 total, 0 valid, 1 orphaned" in result.output
 
     def test_list_untracked_venv_project_name_extraction(
@@ -546,15 +561,16 @@ class TestListCommandCLI:
         mock_cache_instance.list_all.return_value = {}
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         monkeypatch.setattr(
-            "prime_uve.cli.list.scan_venv_directory", lambda: [untracked_venv]
+            "prime_uve.utils.venv.scan_venv_directory", lambda: [untracked_venv]
         )
 
         # Execute
         result = runner.invoke(cli, ["list"])
 
-        # Assert - should extract "my-project" from "my-project_xyz789"
+        # Assert - project name extraction still works internally (not shown in compact table)
         assert result.exit_code == 0
-        assert "<unknown: my-project>" in result.output
+        # Project name no longer shown in compact table (PROJECT column removed)
+        assert "my-project_xyz789" in result.output  # Check venv path is shown
 
     def test_list_untracked_venvs_with_json(self, runner, tmp_path, monkeypatch):
         """Test untracked venvs in JSON output."""
@@ -569,7 +585,7 @@ class TestListCommandCLI:
         mock_cache_instance.list_all.return_value = {}
         monkeypatch.setattr("prime_uve.cli.list.Cache", lambda: mock_cache_instance)
         monkeypatch.setattr(
-            "prime_uve.cli.list.scan_venv_directory", lambda: [untracked_venv]
+            "prime_uve.utils.venv.scan_venv_directory", lambda: [untracked_venv]
         )
 
         # Execute

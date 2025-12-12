@@ -3,7 +3,7 @@
 import pytest
 from click.testing import CliRunner
 
-from prime_uve.cli.main import cli, get_version
+from prime_uve.cli.main import cli
 
 
 class TestCLIMain:
@@ -26,13 +26,6 @@ class TestCLIMain:
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert "prime-uve" in result.output
-
-    def test_get_version(self):
-        """Test version extraction from pyproject.toml."""
-        version = get_version()
-        assert version is not None
-        # Should either be a version string or "unknown"
-        assert isinstance(version, str)
 
     def test_init_command_exists(self, runner):
         """Test that init command exists."""
@@ -81,7 +74,7 @@ class TestCLIMain:
 
     def test_unimplemented_commands_return_error(self, runner):
         """Test that unimplemented commands exit with error code."""
-        # init and list are implemented, test only unimplemented ones
-        for command in ["prune", "activate"]:
-            result = runner.invoke(cli, [command])
-            assert result.exit_code == 1
+        # All commands are now implemented, so this test is no longer applicable
+        # Keeping it as a placeholder in case new commands are added in the future
+        # that need to be implemented
+        pass

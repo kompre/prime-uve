@@ -1,6 +1,7 @@
 """Tests for the prune command."""
 
 import json
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -21,18 +22,35 @@ def runner():
     return CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def mock_venv_base_dir_global(tmp_path):
+    """Automatically mock get_venv_base_dir to use temp directory for all tests.
+
+    This prevents tests from accidentally accessing or deleting real venvs.
+    """
+    test_venv_dir = tmp_path / ".prime-uve" / "venvs"
+    test_venv_dir.mkdir(parents=True, exist_ok=True)
+
+    # Patch get_venv_base_dir in all locations where it's used
+    with (
+        patch("prime_uve.cli.prune.get_venv_base_dir", return_value=test_venv_dir),
+        patch("prime_uve.utils.venv.get_venv_base_dir", return_value=test_venv_dir),
+    ):
+        yield test_venv_dir
+
+
 @pytest.fixture
 def mock_cache(tmp_path):
     """Mock cache with test data."""
     cache_data = {
         str(tmp_path / "project1"): {
-            "venv_path": "${HOME}/prime-uve/venvs/project1_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/project1_abc123",
             "project_name": "project1",
             "path_hash": "abc123",
             "created_at": "2025-12-01T10:00:00Z",
         },
         str(tmp_path / "project2"): {
-            "venv_path": "${HOME}/prime-uve/venvs/project2_def456",
+            "venv_path": "${HOME}/.prime-uve/venvs/project2_def456",
             "project_name": "project2",
             "path_hash": "def456",
             "created_at": "2025-12-02T11:00:00Z",
@@ -114,7 +132,7 @@ class TestHelperFunctions:
         project_path.mkdir()
 
         cache_entry = {
-            "venv_path": "${HOME}/prime-uve/venvs/project_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/project_abc123",
             "project_name": "project",
         }
 
@@ -127,11 +145,11 @@ class TestHelperFunctions:
 
         env_file = project_path / ".env.uve"
         env_file.write_text(
-            "UV_PROJECT_ENVIRONMENT=${HOME}/prime-uve/venvs/different_xyz789\n"
+            "UV_PROJECT_ENVIRONMENT=${HOME}/.prime-uve/venvs/different_xyz789\n"
         )
 
         cache_entry = {
-            "venv_path": "${HOME}/prime-uve/venvs/project_abc123",
+            "venv_path": "${HOME}/.prime-uve/venvs/project_abc123",
             "project_name": "project",
         }
 
@@ -142,7 +160,7 @@ class TestHelperFunctions:
         project_path = tmp_path / "project"
         project_path.mkdir()
 
-        venv_path = "${HOME}/prime-uve/venvs/project_abc123"
+        venv_path = "${HOME}/.prime-uve/venvs/project_abc123"
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
 
@@ -204,6 +222,20 @@ class TestPruneCommand:
         assert result.exit_code == 1
         assert "Cannot specify multiple modes" in result.output
 
+    def test_prune_command_all_valid_combination(self, runner):
+        """Test prune command with --all and --valid combination."""
+        result = runner.invoke(cli, ["prune", "--all", "--valid"])
+
+        assert result.exit_code == 1
+        assert "Cannot specify multiple modes" in result.output
+
+    def test_prune_command_valid_orphan_combination(self, runner):
+        """Test prune command with --valid and --orphan combination."""
+        result = runner.invoke(cli, ["prune", "--valid", "--orphan"])
+
+        assert result.exit_code == 1
+        assert "Cannot specify multiple modes" in result.output
+
     @patch("prime_uve.cli.prune.Cache")
     def test_prune_command_all_dry_run(self, mock_cache_class, runner, tmp_path):
         """Test prune --all in dry run mode."""
@@ -211,7 +243,7 @@ class TestPruneCommand:
         mock_cache = Mock()
         mock_cache.list_all.return_value = {
             str(tmp_path / "project1"): {
-                "venv_path": "${HOME}/prime-uve/venvs/project1_abc123",
+                "venv_path": "${HOME}/.prime-uve/venvs/project1_abc123",
                 "project_name": "project1",
                 "path_hash": "abc123",
                 "created_at": "2025-12-01T10:00:00Z",
@@ -225,7 +257,7 @@ class TestPruneCommand:
         assert "[DRY RUN]" in result.output
         mock_cache.clear.assert_not_called()  # Should not clear in dry run
 
-    @patch("prime_uve.cli.prune.scan_venv_directory")
+    @patch("prime_uve.utils.venv.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
     def test_prune_command_orphan_json_output(
         self, mock_cache_class, mock_scan, runner, tmp_path
@@ -250,14 +282,19 @@ class TestPruneCommand:
 class TestPruneAll:
     """Tests for prune_all function."""
 
+    @patch("prime_uve.cli.prune.auto_register_current_project")
+    @patch("prime_uve.utils.venv.find_untracked_venvs")
     @patch("prime_uve.cli.prune.Cache")
-    def test_prune_all_empty_cache(self, mock_cache_class, runner):
-        """Test prune --all with empty cache."""
+    def test_prune_all_empty_cache(
+        self, mock_cache_class, mock_find_untracked, mock_auto_register, runner
+    ):
+        """Test prune --all with empty cache and no untracked venvs."""
         mock_cache = Mock()
         mock_cache.list_all.return_value = {}
         mock_cache_class.return_value = mock_cache
+        mock_find_untracked.return_value = []  # No untracked venvs
 
-        result = runner.invoke(cli, ["prune", "--all", "--yes"])
+        result = runner.invoke(cli, ["prune", "--all"], input="yes\n")
 
         assert result.exit_code == 0
         assert "No managed venvs found" in result.output
@@ -286,7 +323,7 @@ class TestPruneAll:
         mock_expand.return_value = venv1
         mock_disk_usage.return_value = 1024
 
-        result = runner.invoke(cli, ["prune", "--all", "--yes"])
+        result = runner.invoke(cli, ["prune", "--all"], input="yes\n")
 
         assert result.exit_code == 0
         mock_cache.clear.assert_called_once()
@@ -306,17 +343,295 @@ class TestPruneAll:
         }
         mock_cache_class.return_value = mock_cache
 
-        result = runner.invoke(cli, ["prune", "--all"], input="n\n")
+        result = runner.invoke(cli, ["prune", "--all"], input="no\n")
 
         assert result.exit_code == 0
         assert "Aborted" in result.output
         mock_cache.clear.assert_not_called()
 
+    @patch("prime_uve.cli.prune.auto_register_current_project")
+    @patch("prime_uve.cli.prune.find_untracked_venvs")  # Patch where it's imported
+    @patch("prime_uve.cli.prune.expand_path_variables")
+    @patch("prime_uve.cli.prune.Cache")
+    def test_prune_all_removes_untracked_venvs(
+        self,
+        mock_cache_class,
+        mock_expand,
+        mock_find_untracked,
+        mock_auto_register,
+        runner,
+        tmp_path,
+    ):
+        """Test that --all removes untracked venvs on disk."""
+        venv1 = tmp_path / "venv1"
+        venv1.mkdir()
+        untracked_venv = tmp_path / "untracked_venv"
+        untracked_venv.mkdir()
+
+        mock_cache = Mock()
+        mock_cache.list_all.return_value = {
+            str(tmp_path / "project1"): {
+                "venv_path": "${HOME}/venvs/project1",
+                "project_name": "project1",
+                "path_hash": "abc123",
+                "created_at": "2025-12-01T10:00:00Z",
+            }
+        }
+        mock_cache_class.return_value = mock_cache
+        mock_expand.return_value = venv1
+        mock_find_untracked.return_value = [
+            {
+                "project_name": "<unknown: orphan>",
+                "venv_path": None,
+                "venv_path_expanded": untracked_venv,
+                "disk_usage_bytes": 512,  # Shared utils uses disk_usage_bytes
+            }
+        ]
+
+        result = runner.invoke(cli, ["prune", "--all"], input="yes\n")
+
+        assert result.exit_code == 0
+        assert "untracked" in result.output or "2 venv" in result.output
+        assert not venv1.exists()  # Cached venv removed
+        assert not untracked_venv.exists()  # Untracked venv removed
+
+    @patch("prime_uve.cli.prune.auto_register_current_project")
+    @patch("prime_uve.cli.prune.Cache")
+    def test_prune_all_respects_yes_flag(
+        self, mock_cache_class, mock_auto_register, runner, tmp_path
+    ):
+        """Test that --all respects --yes flag to skip confirmation."""
+        mock_cache = Mock()
+        mock_cache.list_all.return_value = {
+            str(tmp_path / "project1"): {
+                "venv_path": "${HOME}/venvs/project1",
+                "project_name": "project1",
+                "path_hash": "abc123",
+                "created_at": "2025-12-01T10:00:00Z",
+            }
+        }
+        mock_cache_class.return_value = mock_cache
+
+        # Test that --yes flag skips confirmation
+        result = runner.invoke(cli, ["prune", "--all", "--yes"])
+
+        # Should succeed without prompting
+        assert result.exit_code == 0
+
+    @patch("prime_uve.cli.prune.auto_register_current_project")
+    @patch("prime_uve.cli.prune.Cache")
+    def test_prune_all_dry_run(
+        self, mock_cache_class, mock_auto_register, runner, tmp_path
+    ):
+        """Test prune --all in dry run mode."""
+        mock_cache = Mock()
+        mock_cache.list_all.return_value = {
+            str(tmp_path / "project1"): {
+                "venv_path": "${HOME}/venvs/project1",
+                "project_name": "project1",
+                "path_hash": "abc123",
+                "created_at": "2025-12-01T10:00:00Z",
+            }
+        }
+        mock_cache_class.return_value = mock_cache
+
+        result = runner.invoke(cli, ["prune", "--all", "--dry-run"])
+
+        assert result.exit_code == 0
+        assert "[DRY RUN]" in result.output
+        mock_cache.clear.assert_not_called()  # Should not clear in dry run
+
+
+class TestPruneValid:
+    """Tests for prune_valid function."""
+
+    @patch("prime_uve.cli.prune.Cache")
+    def test_prune_valid_empty_cache(self, mock_cache_class, runner):
+        """Test prune --valid with empty cache."""
+        mock_cache = Mock()
+        mock_cache.list_all.return_value = {}
+        mock_cache_class.return_value = mock_cache
+
+        result = runner.invoke(cli, ["prune", "--valid", "--yes"])
+
+        assert result.exit_code == 0
+        assert (
+            "No valid venvs found" in result.output
+            or "No managed venvs found" in result.output
+        )
+
+    @patch("prime_uve.cli.prune.Cache")
+    @patch("prime_uve.cli.prune.expand_path_variables")
+    @patch("prime_uve.cli.prune.get_disk_usage")
+    def test_prune_valid_removes_only_valid_venvs(
+        self, mock_disk_usage, mock_expand, mock_cache_class, runner, tmp_path
+    ):
+        """Test that --valid removes only valid venvs."""
+        # Create project with valid .env.uve
+        valid_project = tmp_path / "valid_project"
+        valid_project.mkdir()
+        venv_path = "${HOME}/.prime-uve/venvs/valid_project_abc123"
+        env_file = valid_project / ".env.uve"
+        env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
+
+        # Create project with orphaned .env.uve
+        orphan_project = tmp_path / "orphan_project"
+        orphan_project.mkdir()
+        orphan_env_file = orphan_project / ".env.uve"
+        orphan_env_file.write_text("UV_PROJECT_ENVIRONMENT=${HOME}/different/path\n")
+
+        venv1 = tmp_path / "venv1"
+        venv1.mkdir()
+        venv2 = tmp_path / "venv2"
+        venv2.mkdir()
+
+        mock_cache = Mock()
+        mock_cache.list_all.return_value = {
+            str(valid_project): {
+                "venv_path": venv_path,
+                "project_name": "valid_project",
+                "path_hash": "abc123",
+                "created_at": "2025-12-01T10:00:00Z",
+            },
+            str(orphan_project): {
+                "venv_path": "${HOME}/.prime-uve/venvs/orphan_project_def456",
+                "project_name": "orphan_project",
+                "path_hash": "def456",
+                "created_at": "2025-12-02T11:00:00Z",
+            },
+        }
+        mock_cache_class.return_value = mock_cache
+
+        # Mock expand to return our test venvs
+        def expand_side_effect(path):
+            if "valid" in path:
+                return venv1
+            else:
+                return venv2
+
+        mock_expand.side_effect = expand_side_effect
+        mock_disk_usage.return_value = 1024
+
+        result = runner.invoke(cli, ["prune", "--valid", "--yes"])
+
+        assert result.exit_code == 0
+        # Only valid venv should be removed
+        assert not venv1.exists()  # Valid venv removed
+        assert venv2.exists()  # Orphaned venv NOT removed
+        # Cache should have mapping removed for valid project only
+        mock_cache.remove_mapping.assert_called_once()
+
+    @patch("prime_uve.cli.prune.auto_register_current_project")
+    @patch("prime_uve.cli.prune.Cache")
+    @patch("prime_uve.cli.prune.expand_path_variables")
+    @patch("prime_uve.cli.prune.get_disk_usage")
+    def test_prune_valid_clears_cache_entries(
+        self,
+        mock_disk_usage,
+        mock_expand,
+        mock_cache_class,
+        mock_auto_register,
+        runner,
+        tmp_path,
+    ):
+        """Test that --valid clears cache entries for removed venvs."""
+        # Create valid project
+        valid_project = tmp_path / "valid_project"
+        valid_project.mkdir()
+        venv_path = "${HOME}/.prime-uve/venvs/valid_project_abc123"
+        env_file = valid_project / ".env.uve"
+        env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
+
+        venv_dir = tmp_path / "venv"
+        venv_dir.mkdir()
+
+        mock_cache = Mock()
+        mock_cache.list_all.return_value = {
+            str(valid_project): {
+                "venv_path": venv_path,
+                "project_name": "valid_project",
+                "path_hash": "abc123",
+                "created_at": "2025-12-01T10:00:00Z",
+            }
+        }
+        mock_cache_class.return_value = mock_cache
+        mock_expand.return_value = venv_dir
+        mock_disk_usage.return_value = 1024
+
+        result = runner.invoke(cli, ["prune", "--valid", "--yes"])
+
+        assert result.exit_code == 0
+        # Verify cache.remove_mapping was called with the project path
+        mock_cache.remove_mapping.assert_called_once_with(Path(str(valid_project)))
+
+    @patch("prime_uve.cli.prune.auto_register_current_project")
+    @patch("prime_uve.cli.prune.Cache")
+    def test_prune_valid_respects_yes_flag(
+        self, mock_cache_class, mock_auto_register, runner, tmp_path
+    ):
+        """Test that --valid respects --yes flag to skip confirmation."""
+        valid_project = tmp_path / "valid_project"
+        valid_project.mkdir()
+        venv_path = "${HOME}/.prime-uve/venvs/valid_project_abc123"
+        env_file = valid_project / ".env.uve"
+        env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
+
+        venv_dir = tmp_path / "venv"
+        venv_dir.mkdir()
+
+        mock_cache = Mock()
+        mock_cache.list_all.return_value = {
+            str(valid_project): {
+                "venv_path": venv_path,
+                "project_name": "valid_project",
+                "path_hash": "abc123",
+                "created_at": "2025-12-01T10:00:00Z",
+            }
+        }
+        mock_cache_class.return_value = mock_cache
+
+        result = runner.invoke(cli, ["prune", "--valid", "--yes"])
+
+        # Should succeed without prompting
+        assert result.exit_code == 0
+
+    @patch("prime_uve.cli.prune.auto_register_current_project")
+    @patch("prime_uve.cli.prune.Cache")
+    def test_prune_valid_dry_run(
+        self, mock_cache_class, mock_auto_register, runner, tmp_path
+    ):
+        """Test prune --valid in dry run mode."""
+        valid_project = tmp_path / "valid_project"
+        valid_project.mkdir()
+        venv_path = "${HOME}/.prime-uve/venvs/valid_project_abc123"
+        env_file = valid_project / ".env.uve"
+        env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
+
+        venv_dir = tmp_path / "venv"
+        venv_dir.mkdir()
+
+        mock_cache = Mock()
+        mock_cache.list_all.return_value = {
+            str(valid_project): {
+                "venv_path": venv_path,
+                "project_name": "valid_project",
+                "path_hash": "abc123",
+                "created_at": "2025-12-01T10:00:00Z",
+            }
+        }
+        mock_cache_class.return_value = mock_cache
+
+        result = runner.invoke(cli, ["prune", "--valid", "--dry-run"])
+
+        assert result.exit_code == 0
+        assert "[DRY RUN]" in result.output
+        mock_cache.remove_mapping.assert_not_called()  # Should not modify cache
+
 
 class TestPruneOrphan:
     """Tests for prune_orphan function."""
 
-    @patch("prime_uve.cli.prune.scan_venv_directory")
+    @patch("prime_uve.utils.venv.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
     def test_prune_orphan_no_orphans(
         self, mock_cache_class, mock_scan, runner, tmp_path
@@ -325,7 +640,7 @@ class TestPruneOrphan:
         project_path = tmp_path / "project1"
         project_path.mkdir()
 
-        venv_path = "${HOME}/prime-uve/venvs/project1_abc123"
+        venv_path = "${HOME}/.prime-uve/venvs/project1_abc123"
         env_file = project_path / ".env.uve"
         env_file.write_text(f"UV_PROJECT_ENVIRONMENT={venv_path}\n")
 
@@ -347,7 +662,7 @@ class TestPruneOrphan:
         assert result.exit_code == 0
         assert "No orphaned venvs found" in result.output
 
-    @patch("prime_uve.cli.prune.scan_venv_directory")
+    @patch("prime_uve.utils.venv.scan_venv_directory")
     @patch("prime_uve.cli.prune.Cache")
     @patch("prime_uve.cli.prune.expand_path_variables")
     @patch("prime_uve.cli.prune.get_disk_usage")

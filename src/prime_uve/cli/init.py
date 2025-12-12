@@ -1,5 +1,8 @@
 """Initialize project with external venv management."""
 
+import subprocess
+import sys
+
 import click
 
 from prime_uve.cli.output import confirm, echo, info, success
@@ -20,6 +23,7 @@ def init_command(
     ctx: click.Context,
     force: bool,
     venv_dir: str | None,
+    sync: bool,
     verbose: bool,
     yes: bool,
     dry_run: bool,
@@ -31,6 +35,7 @@ def init_command(
         ctx: Click context
         force: Reinitialize even if already set up
         venv_dir: Override venv base directory
+        sync: Run 'uve sync' after initialization
         verbose: Show detailed output
         yes: Skip confirmations
         dry_run: Show what would be done
@@ -98,7 +103,7 @@ def init_command(
             ):
                 raise click.Abort()
 
-    # 5. Generate venv path (always uses ${HOME})
+    # 5. Generate venv path (uses ${PRIMEUVE_VENVS_PATH} variable)
     # Note: venv_dir parameter is currently not supported by generate_venv_path
     # For now, ignore the --venv-dir option
     venv_path = generate_venv_path(project_root)
@@ -119,9 +124,14 @@ def init_command(
             f"[DRY RUN] Would create: .env.uve with UV_PROJECT_ENVIRONMENT={venv_path}"
         )
         echo(f"[DRY RUN] Would add cache entry: {project_root} -> {venv_path}")
+        if sync:
+            echo("[DRY RUN] Would run: uve sync")
         return
 
     # 7. Create/update .env.uve
+    # Track whether file existed before
+    env_file_existed = env_file.exists()
+
     # Use update_env_file_preserve_format to preserve file structure, comments, and order
     update_env_file_preserve_format(env_file, {"UV_PROJECT_ENVIRONMENT": venv_path})
 
@@ -147,7 +157,7 @@ def init_command(
             },
             "env_file": {
                 "path": str(env_file),
-                "created": True,
+                "created": not env_file_existed,
             },
             "cache": {"added": True},
         }
@@ -156,14 +166,65 @@ def init_command(
         success(f"Project: {project_name}")
         success(f"Project root: {project_root}")
         success(f"Venv path: {venv_path}")
-        success("Created .env.uve")
+        info(f"  Expanded: {venv_path_expanded}")
+        if env_file_existed:
+            success("Updated .env.uve")
+        else:
+            success("Created .env.uve")
         success("Added to cache")
 
-        echo("\nNext steps:")
-        echo("  1. Use 'uve' instead of 'uv' for all commands")
-        echo("  2. Run 'uve sync' to create venv and install dependencies")
-        echo("  3. Commit .env.uve to version control")
-        echo("\nExample:")
-        echo("  uve sync                # Creates venv and installs dependencies")
-        echo("  uve add requests        # Add a package")
-        echo("  uve run python app.py   # Run your application")
+        if not sync:
+            echo("\nNext steps:")
+            echo("  1. Use 'uve' instead of 'uv' for all commands")
+            echo("  2. Run 'uve sync' to create venv and install dependencies")
+            echo("\nExample:")
+            echo("  uve sync                # Creates venv and installs dependencies")
+            echo("  uve add requests        # Add a package")
+            echo("  uve run python app.py   # Run your application")
+
+    # 10. Run uve sync if requested
+    if sync:
+        if not json_output:
+            echo("\nRunning 'uve sync'...")
+
+        try:
+            result = subprocess.run(
+                ["uve", "sync"],
+                cwd=project_root,
+                check=True,
+                capture_output=json_output,  # Only capture if JSON output
+                text=True,
+            )
+
+            if json_output:
+                echo(result.stdout)
+            else:
+                success("Dependencies synced successfully")
+
+        except subprocess.CalledProcessError as e:
+            error_msg = f"Failed to run 'uve sync': {e}"
+            if json_output:
+                import json
+
+                echo(
+                    json.dumps(
+                        {"status": "error", "message": error_msg, "stderr": e.stderr},
+                        indent=2,
+                    )
+                )
+            else:
+                echo(f"\n⚠ Error: {error_msg}", err=True)
+                if e.stderr:
+                    echo(e.stderr, err=True)
+            sys.exit(e.returncode)
+        except FileNotFoundError:
+            error_msg = (
+                "'uve' command not found. Make sure prime-uve is installed correctly."
+            )
+            if json_output:
+                import json
+
+                echo(json.dumps({"status": "error", "message": error_msg}, indent=2))
+            else:
+                echo(f"\n⚠ Error: {error_msg}", err=True)
+            sys.exit(1)

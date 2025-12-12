@@ -67,7 +67,7 @@ def test_init_then_uve_sync(runner, test_project, cache_file, monkeypatch):
         assert venv_path is not None
 
         # Verify .env.uve is readable and valid
-        assert "${HOME}" in venv_path or "$HOME" in venv_path
+        assert "${PRIMEUVE_VENVS_PATH}" in venv_path
 
 
 def test_init_then_list(runner, test_project, cache_file, monkeypatch):
@@ -140,12 +140,13 @@ def test_init_cross_platform_paths(runner, test_project, cache_file, monkeypatch
         env_file = test_project / ".env.uve"
         content = env_file.read_text()
 
-        # Should use ${HOME} for cross-platform compatibility
-        assert "${HOME}" in content
+        # Should use ${PRIMEUVE_VENVS_PATH} for cross-platform compatibility
+        assert "${PRIMEUVE_VENVS_PATH}" in content
 
-        # Should NOT use platform-specific variables
+        # Should NOT use platform-specific variables directly
         assert "${USERPROFILE}" not in content
         assert "%USERPROFILE%" not in content
+        assert "${HOME}" not in content  # Now using PRIMEUVE_VENVS_PATH instead
 
         # Path should be valid (no double slashes, etc.)
         env_vars = read_env_file(env_file)
@@ -153,7 +154,7 @@ def test_init_cross_platform_paths(runner, test_project, cache_file, monkeypatch
 
         # Should be properly formatted path
         assert "//" not in venv_path
-        assert venv_path.count("${HOME}") == 1
+        assert venv_path.count("${PRIMEUVE_VENVS_PATH}") == 1
 
 
 def test_init_preserves_existing_env_vars(

@@ -4,40 +4,26 @@
 
 <!-- Add tasks here. When creating a proposal, move the task description to the proposal file -->
 
-### set proper venv cache location for each major platform
+### prime-uve list improvements
 
-since we set $home as environment variable when `uve` is called, then we can set a proper cache location for each major platform (windows, linux, mac) with a new variable `$UVE_VENV_CACHE`.
+I want to display a more useful table.
 
-### update cache.json
+- Status should be moved as first column and display only [OK]/[!] so that max width can be contained;
+- I want to show the project path, so that user can quickly navigate to the project; (can we display just named link instead of ful path?)
+- If prime-list is called in a managed project, then highlight the project in the table as `(current)`
+- add option `--no-auto-register` to prevent auto-registration. This need to be implemented also in `prime-uve prune`
 
-the cache.json will be populated only when running `prime-uve init`, so there coule be a situation where the .env.uve is already created, but the rproject reference is missing from cache.json, because the user did some operation. If `.env.uve` is already set, user can call `uve sync` that will create the venv in the correct location, but the cache.json will not be updated, and the venv will be marked as orphaned even if it is valid.
+### improvement to configure vs-code
 
-We should then add a new command to `prime-uve register`, that will update the cache.json file, when called from within a project that has .env.uve file and `UV_PROJECT_ENVIRONMENT` is set.
+vs-code configure is not enough. vscode lament the default path is not correct, and would not spawn a new terminal with the virtual env started. The discoverability needs to be improved.
 
-`register` should be called before `list` or `prune` to ensure that the cache is up to date.
+### register message
 
-### correct message output for `prime-uve init`
+when the register method is run, if it is successful, i.e. it register the current project in the cache, it should display a message to let user know it happened. Otherwise a user that want to prune --all the venvs, when they run again prime-uve list the newly registered venv will appear again creating confusion.
 
-When `prime-uve init` is called, the current message output is this
+### bug: --all in prune
 
-```sh
-[OK] Project: prime-uve
-[OK] Project root: C:\Users\s.follador\Documents\github\prime-uve
-[OK] Venv path: ${HOME}/prime-uve/venvs/prime-uve_043331fa
-[OK] Created .env.uve ### or updated if .env.uve already existed
-[OK] Added to cache
-
-Next steps:
-  1. Use 'uve' instead of 'uv' for all commands
-  2. Run 'uve sync' to create venv and install dependencies
-  3. Commit .env.uve to version control ### delete this step, let user decide what to do 
-
-Example:
-  uve sync                # Creates venv and installs dependencies
-  uve add requests        # Add a package
-  uve run python app.py   # Run your application
-```
-
+--all option in prune does not eliminate orphaned venvs. add a new option `--valid` to delete only valid venvs, and change `--all` to be the same as `--orphan + --valid`.
 
 
 ## Instructions
