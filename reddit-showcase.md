@@ -40,7 +40,7 @@ File lookup walks up the directory tree, so commands work from any project subdi
 - Teams standardizing on uv who need centralized venv storage
 - Anyone managing multiple Python projects who wants organized venv locations
 
-This is production-ready for its scope (it's a thin wrapper with minimal complexity). Currently at v0.1.2 with core commands implemented.
+This is production-ready for its scope (it's a thin wrapper with minimal complexity). Currently at v0.2.0 with core commands implemented.
 
 ## Comparison
 
