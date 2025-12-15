@@ -32,13 +32,18 @@ The `.env.uve` file is critical to this project's operation. The lookup logic is
 
 The file should contain:
 ```
-UV_PROJECT_ENVIRONMENT="$HOME/.prime-uve/venvs/<project_name>_<short path hash>"
+UV_PROJECT_ENVIRONMENT="${PRIMEUVE_VENVS_PATH}/<project_name>_<short path hash>"
 ```
 
+The `${PRIMEUVE_VENVS_PATH}` variable is injected by `uve` at runtime and expands to platform-specific cache locations:
+- Linux: `~/.cache/prime-uve/venvs` (respects `XDG_CACHE_HOME`)
+- macOS: `~/Library/Caches/prime-uve/venvs`
+- Windows: `%LOCALAPPDATA%\prime-uve\Cache\venvs`
+
 Path requirements:
-- Must work cross-platform
-- Should use expandable env variables (e.g., `$HOME`)
+- Must work cross-platform via `${PRIMEUVE_VENVS_PATH}` variable
 - Should be unique per project using name + hash
+- Can be overridden by setting `PRIMEUVE_VENVS_PATH` environment variable
 
 ## prime-uve Commands to Implement
 
