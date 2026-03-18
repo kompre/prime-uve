@@ -365,7 +365,7 @@ def test_absolute_to_vscode_path_linux(monkeypatch):
     path = Path("/home/testuser/.cache/prime-uve/venvs/project_abc123")
     result = absolute_to_vscode_path(path)
 
-    assert result == "${userHome}/.cache/prime-uve/venvs/project_abc123"
+    assert result == "${env:HOME}/.cache/prime-uve/venvs/project_abc123"
 
 
 def test_absolute_to_vscode_path_macos(monkeypatch):
@@ -380,7 +380,7 @@ def test_absolute_to_vscode_path_macos(monkeypatch):
     path = Path("/Users/testuser/Library/Caches/prime-uve/venvs/project_abc123")
     result = absolute_to_vscode_path(path)
 
-    assert result == "${userHome}/Library/Caches/prime-uve/venvs/project_abc123"
+    assert result == "${env:HOME}/Library/Caches/prime-uve/venvs/project_abc123"
 
 
 def test_absolute_to_vscode_path_windows(monkeypatch):

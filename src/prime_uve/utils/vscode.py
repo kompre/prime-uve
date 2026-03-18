@@ -274,8 +274,8 @@ def absolute_to_vscode_path(absolute_path: Path) -> str:
     """Convert absolute path to VS Code variable syntax.
 
     Translates platform-specific paths to VS Code's variable format:
-    - Linux: /home/user → ${userHome}
-    - macOS: /Users/user → ${userHome}
+    - Linux: /home/user → ${env:HOME}
+    - macOS: /Users/user → ${env:HOME}
     - Windows: C:/Users/user/AppData/Local → ${env:LOCALAPPDATA}
 
     If path cannot be converted to variables (e.g., custom location),
@@ -297,7 +297,7 @@ def absolute_to_vscode_path(absolute_path: Path) -> str:
         # Try to replace home directory
         home = os.path.expanduser("~").replace("\\", "/")
         if path_str.startswith(home):
-            return path_str.replace(home, "${userHome}", 1)
+            return path_str.replace(home, "${env:HOME}", 1)
 
         # Check for XDG_CACHE_HOME
         xdg_cache = os.environ.get("XDG_CACHE_HOME")
@@ -310,7 +310,7 @@ def absolute_to_vscode_path(absolute_path: Path) -> str:
         # Replace home directory
         home = os.path.expanduser("~").replace("\\", "/")
         if path_str.startswith(home):
-            return path_str.replace(home, "${userHome}", 1)
+            return path_str.replace(home, "${env:HOME}", 1)
 
     elif system == "Windows":
         # Try LOCALAPPDATA first
@@ -325,7 +325,7 @@ def absolute_to_vscode_path(absolute_path: Path) -> str:
         if userprofile:
             userprofile = userprofile.replace("\\", "/")
             if path_str.startswith(userprofile):
-                return path_str.replace(userprofile, "${userHome}", 1)
+                return path_str.replace(userprofile, "${env:USERPROFILE}", 1)
 
     # Fallback: return absolute path with forward slashes
     return path_str
