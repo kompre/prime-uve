@@ -112,13 +112,13 @@ def test_main_forwards_exit_code(
 
 
 def test_main_with_no_args(mock_find_env_file, mock_subprocess, mock_is_uv_available):
-    """Works with no arguments (uve → uv run --env-file .env.uve -- uv)."""
+    """Works with no arguments (uve → uv run --no-project --env-file .env.uve -- uv)."""
     with patch("sys.argv", ["uve"]), pytest.raises(SystemExit) as exc_info:
         main()
 
     assert exc_info.value.code == 0
     cmd = mock_subprocess.call_args[0][0]
-    # Should be: uv run --env-file <path> -- uv
+    # Should be: uv run --no-project --env-file <path> -- uv
     assert cmd[:2] == ["uv", "run"]
     assert "--env-file" in cmd
     assert "--" in cmd
@@ -131,7 +131,7 @@ def test_main_with_no_args(mock_find_env_file, mock_subprocess, mock_is_uv_avail
 def test_main_constructs_correct_command(
     mock_find_env_file, mock_subprocess, mock_is_uv_available
 ):
-    """Verify exact command: uv run --env-file .env.uve -- uv [args]."""
+    """Verify exact command: uv run --no-project --env-file .env.uve -- uv [args]."""
     with patch("sys.argv", ["uve", "add", "requests"]), pytest.raises(SystemExit):
         main()
 
@@ -140,6 +140,7 @@ def test_main_constructs_correct_command(
     expected_prefix = [
         "uv",
         "run",
+        "--no-project",
         "--env-file",
         expected_path,
         "--",

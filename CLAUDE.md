@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **prime-uve** is a thin wrapper for `uv` that provides two commands:
 
-1. **`uve`** - Alias for `uv run --env-file .env.uve -- uv [command]`
+1. **`uve`** - Alias for `uv run --no-project --env-file .env.uve -- uv [command]`
 2. **`prime-uve`** - CLI tool for venv management with external venv locations
 
 The core problem being solved: `uv` needs the `UV_PROJECT_ENVIRONMENT` variable to work correctly with external venvs. This wrapper automates loading `.env.uve` for every command and provides tooling to manage venvs in a centralized location outside project roots.

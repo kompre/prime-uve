@@ -31,9 +31,9 @@ def main() -> None:
     - PRIMEUVE_VENVS_PATH: Set to platform-appropriate venv cache path if not already set
 
     Usage:
-        uve add requests       → uv run --env-file .env.uve -- uv add requests
-        uve sync               → uv run --env-file .env.uve -- uv sync
-        uve run python app.py  → uv run --env-file .env.uve -- uv run python app.py
+        uve add requests       → uv run --no-project --env-file .env.uve -- uv add requests
+        uve sync               → uv run --no-project --env-file .env.uve -- uv sync
+        uve run python app.py  → uv run --no-project --env-file .env.uve -- uv run python app.py
 
     Exit codes:
         0: Success
@@ -60,11 +60,14 @@ def main() -> None:
     if "PRIMEUVE_VENVS_PATH" not in env:
         env["PRIMEUVE_VENVS_PATH"] = str(get_venvs_cache_path())
 
-    # 3. Build command: uv run --env-file .env.uve -- uv [args...]
+    # 3. Build command: uv run --no-project --env-file .env.uve -- uv [args...]
     args = sys.argv[1:]  # All args after 'uve'
+    # --no-project: the outer `uv run` only loads the env file and launches the
+    # inner uv. Without it, uv >= 0.11.17 (which no longer applies --env-file to
+    # its own process) would sync the project into a local .venv.
     # Convert to POSIX format and escape spaces for uv --env-file quirk
     env_file_str = env_file.as_posix().replace(" ", r"\ ")
-    cmd = ["uv", "run", "--env-file", env_file_str, "--", "uv"] + args
+    cmd = ["uv", "run", "--no-project", "--env-file", env_file_str, "--", "uv"] + args
 
     # 4. Check if uv is available
     if not is_uv_available():
