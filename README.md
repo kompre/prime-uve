@@ -31,7 +31,7 @@ To make things easier, `prime-uve`[^1] rely on `.env.uve` file where the `UV_PRO
 [^1]: yes, it's read like the grappa
 
 `uve`
-: *almost* just an alias for `uv run --env-file .env.uve -- uv [args]` 
+: *almost* just an alias for `uv run --no-project --env-file .env.uve -- uv [args]` 
 
 
 `prime-uve`
@@ -43,7 +43,7 @@ As an intended "side" effect, `prime-uve` is not limited to just `UV_PROJECT_ENV
 
 ### The `uve` Command
 
-`uve` is *almost* an alias for `uv run --env-file .env.uve -- uv [args]` with two enhancements:
+`uve` is *almost* an alias for `uv run --no-project --env-file .env.uve -- uv [args]` with two enhancements:
 
 1. **Automatic `.env.uve` discovery**: Searches current directory and walks up parent directories
 2. **Platform-aware variable injection**: Sets `PRIMEUVE_VENVS_PATH` to platform-specific cache location
@@ -55,7 +55,7 @@ As an intended "side" effect, `prime-uve` is not limited to just `UV_PROJECT_ENV
    - Linux: `~/.cache/prime-uve/venvs`
    - macOS: `~/Library/Caches/prime-uve/venvs`
    - Windows: `%LOCALAPPDATA%\prime-uve\Cache\venvs`
-3. Runs: `uv run --env-file .env.uve -- uv sync`
+3. Runs: `uv run --no-project --env-file .env.uve -- uv sync`
 4. uv reads `UV_PROJECT_ENVIRONMENT=${PRIMEUVE_VENVS_PATH}/project_hash` from `.env.uve`
 5. Variable expands to actual path (e.g., `~/.cache/prime-uve/venvs/project_hash`)
 6. uv creates/uses venv at the expanded external location
@@ -133,9 +133,9 @@ UV_PROJECT_ENVIRONMENT="${PRIMEUVE_VENVS_PATH}/myproject_abc123"
 ### 2. Use `uve` instead of `uv`
 
 ```bash
-uve sync                    # Instead of: uv run --env-file .env.uve -- uv sync
-uve add requests            # Instead of: uv run --env-file .env.uve -- uv add requests
-uve run python script.py    # Instead of: uv run --env-file .env.uve -- uv run python script.py
+uve sync                    # Instead of: uv run --no-project --env-file .env.uve -- uv sync
+uve add requests            # Instead of: uv run --no-project --env-file .env.uve -- uv add requests
+uve run python script.py    # Instead of: uv run --no-project --env-file .env.uve -- uv run python script.py
 ```
 
 ## `.env.uve` File Lookup

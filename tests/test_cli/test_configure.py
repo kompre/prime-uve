@@ -523,15 +523,15 @@ def test_configure_vscode_uses_environment_variables(
 
     # Should contain VS Code variables, not the expanded absolute path
     # On Windows with tmp_path (under LOCALAPPDATA), should use ${env:LOCALAPPDATA}
-    # On other platforms, should use ${userHome}
+    # On other platforms, should use ${env:HOME}
     if sys.platform == "win32":
         assert (
             "${env:LOCALAPPDATA}" in interpreter_path
-            or "${userHome}" in interpreter_path
+            or "${env:USERPROFILE}" in interpreter_path
         ), f"Expected VS Code variable in path, got: {interpreter_path}"
     else:
-        assert "${userHome}" in interpreter_path, (
-            f"Expected ${{userHome}} in path, got: {interpreter_path}"
+        assert "${env:HOME}" in interpreter_path, (
+            f"Expected ${{env:HOME}} in path, got: {interpreter_path}"
         )
     assert "custom/venvs/test_venv" in interpreter_path
 
