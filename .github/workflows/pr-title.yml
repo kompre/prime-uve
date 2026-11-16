@@ -1,0 +1,28 @@
+name: PR Title
+
+# PRs are squash-merged, so the PR title becomes the commit message on main
+# that release-please reads. This check keeps it a conventional commit.
+# Tiny job: no checkout, no setup, runs in a few seconds.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened]
+
+permissions: {}
+
+jobs:
+  conventional-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          PATTERN='^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style)(\([a-z0-9._-]+\))?!?: .+'
+          if [[ "$TITLE" =~ $PATTERN ]]; then
+            echo "OK: $TITLE"
+          else
+            echo "::error::PR title is not a conventional commit: '$TITLE'"
+            echo "Expected e.g. 'fix(uve): short description' or 'feat!: breaking change'"
+            exit 1
+          fi
