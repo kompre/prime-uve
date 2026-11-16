@@ -1,134 +1,54 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repository. Workflow, CI and releases are
+described in `CONTRIBUTING.md`.
 
-## Project Overview
+## Project
 
-**prime-uve** is a thin wrapper for `uv` that provides two commands:
+**prime-uve** is a thin wrapper for `uv` with two commands:
 
-1. **`uve`** - Alias for `uv run --no-project --env-file .env.uve -- uv [command]`
-2. **`prime-uve`** - CLI tool for venv management with external venv locations
+1. **`uve`** - alias for `uv run --no-project --env-file .env.uve -- uv [args]`
+   (`src/prime_uve/uve/wrapper.py`). `--no-project` keeps the outer `uv run`
+   from syncing a local `.venv` (uv >= 0.11.17 no longer applies `--env-file`
+   to its own process).
+2. **`prime-uve`** - click CLI to manage venvs stored outside the project:
+   `init`, `list`, `prune`, `activate`, `shell`, `dir`, `register`,
+   `configure vscode` (`src/prime_uve/cli/`).
 
-The core problem being solved: `uv` needs the `UV_PROJECT_ENVIRONMENT` variable to work correctly with external venvs. This wrapper automates loading `.env.uve` for every command and provides tooling to manage venvs in a centralized location outside project roots.
+`.env.uve` holds `UV_PROJECT_ENVIRONMENT="${PRIMEUVE_VENVS_PATH}/<name>_<hash>"`.
+`uve` injects `PRIMEUVE_VENVS_PATH` (platform cache dir, overridable):
+Linux `~/.cache/prime-uve/venvs`, macOS `~/Library/Caches/prime-uve/venvs`,
+Windows `%LOCALAPPDATA%\prime-uve\Cache\venvs`. Lookup: cwd, then walk up to
+the project root (`pyproject.toml`).
 
-## Development Commands
+## Layout
+
+| Path | Responsibility |
+|---|---|
+| `core/paths.py` | venv cache location, path hashing |
+| `core/env_file.py` | find / read / write `.env.uve` |
+| `core/cache.py` | local project <-> venv mapping (filelock), used by `list`/`prune` to detect orphans |
+| `core/project.py` | project root detection |
+| `utils/` | disk usage, shell detection, venv helpers, VS Code workspace edits |
+| `cli/` | one module per command, `main.py` wires them up |
+
+## Commands
 
 ```bash
-# Sync dependencies (run at session start for uv-managed projects)
-uv sync
-
-# Use uv commands (prefer uv over direct pyproject.toml edits)
-uv add <package>
-uv remove <package>
+uv sync --group dev
+uv run pytest tests            # 2 permission tests fail when run as root (containers); fine in CI
+uv run ruff check src tests
+uv run ruff format src tests   # CI runs `ruff format --check`; no bot auto-fixes, so format before committing
 ```
 
-## .env.uve File Handling
+Use `uv add/remove` rather than editing dependencies by hand.
 
-The `.env.uve` file is critical to this project's operation. The lookup logic is:
+## Workflow (short version)
 
-1. Look for `.env.uve` in cwd
-2. If not found and cwd is not project root (no pyproject.toml), walk up the tree
-3. If not found at project root, create a default empty one
-
-The file should contain:
-```
-UV_PROJECT_ENVIRONMENT="${PRIMEUVE_VENVS_PATH}/<project_name>_<short path hash>"
-```
-
-The `${PRIMEUVE_VENVS_PATH}` variable is injected by `uve` at runtime and expands to platform-specific cache locations:
-- Linux: `~/.cache/prime-uve/venvs` (respects `XDG_CACHE_HOME`)
-- macOS: `~/Library/Caches/prime-uve/venvs`
-- Windows: `%LOCALAPPDATA%\prime-uve\Cache\venvs`
-
-Path requirements:
-- Must work cross-platform via `${PRIMEUVE_VENVS_PATH}` variable
-- Should be unique per project using name + hash
-- Can be overridden by setting `PRIMEUVE_VENVS_PATH` environment variable
-
-## prime-uve Commands to Implement
-
-- **`prime-uve init`** - Set up venv path and save to `.env.uve`
-- **`prime-uve list`** - List all managed venvs (validate that projects still exist and paths match `.env.uve`)
-- **`prime-uve prune`** - Remove venvs from cache
-  - `--all` - Clean everything
-  - `--orphan` - Clean only orphan venvs
-  - `path/to/venv` - Clean specific venv
-  - `--current` - Clean venv mapped to current project
-- **`prime-uve activate`** - Activate current project venv from `.env.uve`
-- **`prime-uve configure vscode`** - Update `.code-workspace` file with venv path
-
-## Installation
-
-`prime-uve` should be installed as a standalone CLI tool:
-```bash
-uv tool install prime-uve
-```
-
-## Task Management Workflow
-
-This project uses a structured task workflow in the `_todo/` directory. **CRITICAL**: Follow this process exactly to keep the todo folder organized.
-
-### Directory Structure
-- `_todo/proposal/` - Task proposals awaiting approval
-- `_todo/pending/` - Active development tasks with progress updates
-- `_todo/completed/YYYY-MM-DD/` - Archived completed tasks
-
-### Workflow with Branching
-
-**IMPORTANT**: Each task gets its own feature branch. This keeps the todo folder in sync across branches.
-
-1. **Proposal Phase**
-   - User adds task to `_todo/todo.md`
-   - Claude creates detailed proposal in `proposal/[task-name].md`
-   - User reviews and approves
-
-2. **Start Work Phase** (CRITICAL PROCESS)
-   - Move task from `proposal/` to `pending/[task-name].md`
-   - Commit the move: `git add _todo && git commit -m "Move [task-name] to pending"`
-   - Push to main/dev branch: `git push`
-   - Create feature branch: `git checkout -b feature/[task-name]`
-   - Now begin implementation work
-
-3. **Development Phase**
-   - Make code changes in the feature branch
-   - Update `pending/[task-name].md` with progress notes
-   - Commit code changes regularly
-   - Push feature branch: `git push -u origin feature/[task-name]`
-
-4. **Completion Phase**
-   - Create PR for the feature branch
-   - After PR is merged to main/dev
-   - Switch back to main/dev: `git checkout main` (or `dev`)
-   - Pull latest: `git pull`
-   - Move task from `pending/` to `completed/YYYY-MM-DD/[task-name].md`
-   - Add completion summary to the task file
-   - Commit: `git add _todo && git commit -m "Archive completed task: [task-name]"`
-   - Push: `git push`
-
-### Why This Process Matters
-
-- **Todo folder stays clean**: Each task file exists in only one location per branch
-- **Git history is clear**: Task progression is tracked through commits
-- **No merge conflicts**: Moving tasks before branching prevents conflicts
-- **Synchronization**: Main/dev branch always has the source of truth for task status
-
-### Task File Contents
-
-Each task file should include:
-- Original objective
-- Implementation plan
-- Progress updates (in pending phase)
-- Final summary (in completed phase)
-
-### Quick Reference
-
-Use the `/todo-init` slash command to start work on an approved task - it automates the branching workflow.
-
-## Architecture Notes
-
-**Current Status**: Project is in early planning phase. No source code exists yet (`src/` directory is empty). Architecture definition is the active task in `_todo/todo.md`.
-
-**Key Design Constraint**: The venv mapping needs to be cached/tracked locally so that `prime-uve list` can verify:
-- Which projects still exist on disk
-- Whether the path in `.env.uve` matches the cached mapping
-- Which venvs are orphaned (project deleted or path changed)
+- Work is tracked in GitHub issues. One branch + one PR per issue, PR into `main`.
+- PRs are squash-merged: the **PR title** is the commit release-please reads, so
+  it must be a conventional commit (`fix(uve): ...`, `feat(list): ...`,
+  `feat!: ...`). Put `Fixes #N` in the PR body.
+- Never edit the version in `pyproject.toml` or `CHANGELOG.md` by hand -
+  release-please owns them.
+- Releases happen by merging the standing `chore(main): release X.Y.Z` PR.
